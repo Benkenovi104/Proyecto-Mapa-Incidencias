@@ -1,0 +1,6 @@
+@ApiPGE_HostAddress = http://localhost:5102
+
+GET {{ApiPGE_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

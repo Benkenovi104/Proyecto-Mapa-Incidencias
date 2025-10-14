@@ -1,0 +1,134 @@
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="IntegrarMapa.PanelIncidenciasPage"
+             Title="Operador municipal">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="15" Spacing="15">
+
+            <!-- 🔹 Título principal -->
+            <Label Text="Operador municipal"
+                   FontSize="22"
+                   FontAttributes="Bold"
+                   HorizontalOptions="Center"
+                   TextColor="Black" />
+
+            <!-- 🔹 Sección: Últimas incidencias -->
+            <Button Text="Últimas incidencias"
+                    BackgroundColor="Transparent"
+                    TextColor="#E53935"
+                    BorderColor="#E53935"
+                    BorderWidth="1"
+                    CornerRadius="8"
+                    WidthRequest="220"
+                    HorizontalOptions="Center" />
+
+            <!-- 🧾 Tabla de incidencias -->
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto" Padding="5,0">
+                <Label Text="Fecha" FontAttributes="Bold" />
+                <Label Text="Usuario" FontAttributes="Bold" Grid.Column="1" />
+                <Label Text="Estado" FontAttributes="Bold" Grid.Column="2" />
+                <Label Text="Acciones" FontAttributes="Bold" Grid.Column="3" />
+            </Grid>
+
+            <CollectionView x:Name="TablaIncidencias">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Grid ColumnDefinitions="Auto,*,Auto,Auto" Padding="5">
+                            <Label Text="{Binding Fecha}" Grid.Column="0" />
+                            <Label Text="{Binding Usuario}" Grid.Column="1" />
+                            <Label Text="{Binding Estado}" Grid.Column="2" />
+
+                            <HorizontalStackLayout Grid.Column="3" Spacing="8">
+                                <Button Text="🗑️"
+                                        BackgroundColor="Transparent"
+                                        Clicked="OnEliminarClicked" />
+                                <Button Text="✏️"
+                                        BackgroundColor="Transparent"
+                                        Clicked="OnEditarClicked" />
+                            </HorizontalStackLayout>
+                        </Grid>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+
+            <!-- 🔍 Sección búsqueda -->
+            <Button Text="Buscar incidencias"
+                    BackgroundColor="Transparent"
+                    TextColor="#E53935"
+                    BorderColor="#E53935"
+                    BorderWidth="1"
+                    CornerRadius="8"
+                    WidthRequest="220"
+                    HorizontalOptions="Center"
+                    Margin="0,10,0,0" />
+
+            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto" ColumnSpacing="10">
+                <VerticalStackLayout Grid.Column="0">
+                    <Label Text="Por usuario:" FontAttributes="Bold" />
+                    <Entry x:Name="FiltroUsuario" Placeholder="Nombre..." />
+                </VerticalStackLayout>
+
+                <VerticalStackLayout Grid.Column="1">
+                    <Label Text="Por estado:" FontAttributes="Bold" />
+                    <Picker x:Name="FiltroEstado">
+                        <Picker.Items>
+                            <x:String>Todos</x:String>
+                            <x:String>Aprobado</x:String>
+                            <x:String>Pendiente</x:String>
+                            <x:String>Denegado</x:String>
+                        </Picker.Items>
+                    </Picker>
+                </VerticalStackLayout>
+            </Grid>
+
+            <Button Text="Buscar"
+                    BackgroundColor="#E53935"
+                    TextColor="White"
+                    CornerRadius="10"
+                    Clicked="OnBuscarClicked" />
+
+            <!-- 🔸 Resultados -->
+            <Label x:Name="LblResultado" 
+                   Text=""
+                   FontAttributes="Bold"
+                   TextColor="#E53935"
+                   IsVisible="False" />
+
+            <CollectionView x:Name="ResultadosView" IsVisible="False">
+                <CollectionView.Header>
+                    <Grid ColumnDefinitions="Auto,*,Auto,Auto" Padding="5,0">
+                        <Label Text="Fecha" FontAttributes="Bold" />
+                        <Label Text="Usuario" FontAttributes="Bold" Grid.Column="1" />
+                        <Label Text="Estado" FontAttributes="Bold" Grid.Column="2" />
+                        <Label Text="Acciones" FontAttributes="Bold" Grid.Column="3" />
+                    </Grid>
+                </CollectionView.Header>
+
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Grid ColumnDefinitions="Auto,*,Auto,Auto" Padding="5">
+                            <Label Text="{Binding Fecha}" Grid.Column="0" />
+                            <Label Text="{Binding Usuario}" Grid.Column="1" />
+                            <Label Text="{Binding Estado}" Grid.Column="2" />
+                            <HorizontalStackLayout Grid.Column="3" Spacing="8">
+                                <Button Text="🗑️"
+                                        BackgroundColor="Transparent"
+                                        Clicked="OnEliminarClicked" />
+                                <Button Text="✏️"
+                                        BackgroundColor="Transparent"
+                                        Clicked="OnEditarClicked" />
+                            </HorizontalStackLayout>
+                        </Grid>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+            <Button Text="⬅ Volver"
+                BackgroundColor="#E53935"
+                TextColor="White"
+                CornerRadius="10"
+                Margin="0,10,0,20"
+                Clicked="OnVolverClicked"/>
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
