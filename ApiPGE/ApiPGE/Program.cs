@@ -478,5 +478,28 @@ app.MapPost("/auth/logout", () =>
     return Results.Ok(new { message = "Logout exitoso" });
 });
 
+// Cambiar contraseña
+app.MapPost("/auth/change-password", async ([FromBody] ChangePasswordDto dto, AppDb db) =>
+{
+    if (string.IsNullOrWhiteSpace(dto.Email) ||
+        string.IsNullOrWhiteSpace(dto.OldPassword) ||
+        string.IsNullOrWhiteSpace(dto.NewPassword))
+        return Results.BadRequest("Faltan datos obligatorios.");
+
+    var user = await db.Usuarios.FirstOrDefaultAsync(u => u.Email == dto.Email);
+
+    if (user is null)
+        return Results.NotFound("Usuario no encontrado.");
+
+    if (user.Password != dto.OldPassword)
+        return Results.BadRequest("La contraseña actual es incorrecta.");
+
+    user.Password = dto.NewPassword; // 🔒 En producción, deberías hashearla
+    await db.SaveChangesAsync();
+
+    return Results.Ok(new { message = "Contraseña actualizada correctamente." });
+});
+
+
 
 app.Run();

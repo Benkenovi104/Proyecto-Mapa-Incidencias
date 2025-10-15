@@ -20,7 +20,7 @@
 
             <!-- Contraseña -->
             <Entry x:Name="entryContrasena"
-                   Placeholder="Contraseña"
+                   Placeholder="Contrasena"
                    IsPassword="True"
                    ReturnType="Done" />
 
@@ -37,7 +37,7 @@
                     CornerRadius="10"
                     Clicked="OnRegistrarseClicked" />
 
-            <Button Text="Cambiar contraseña"
+            <Button Text="Cambiar contrasena"
                     BackgroundColor="#FFC107"
                     TextColor="Black"
                     CornerRadius="10"

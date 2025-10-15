@@ -45,11 +45,14 @@ public partial class LoginPage : ContentPage
 
     private async void OnRegistrarseClicked(object sender, EventArgs e)
     {
-        await DisplayAlert("Registro", "Aquí iría la pantalla de registro.", "OK");
+        await Navigation.PushAsync(new RegisterPage());
     }
+
 
     private async void OnCambiarContrasenaClicked(object sender, EventArgs e)
     {
-        await DisplayAlert("Cambiar contraseña", "Aquí iría la pantalla para cambiar contraseña.", "OK");
+        await Navigation.PushAsync(new ChangePasswordPage());
     }
+
+
 }
