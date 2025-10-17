@@ -10,4 +10,6 @@ public class IncidentVm
     public double Lat { get; set; }
     public double Lon { get; set; }
     public DateTimeOffset Timestamp { get; set; }
+    public string? IconoUrl { get; set; } // ← NUEVO: agregar esta propiedad
+
 }

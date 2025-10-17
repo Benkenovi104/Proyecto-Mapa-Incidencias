@@ -60,7 +60,15 @@ app.MapGet("/estado_incidencias", async (AppDb db) =>
 
 /* ---------- CATEGORÍAS ---------- */
 app.MapGet("/categories", async (AppDb db) =>
-    await db.Categorias.OrderBy(c => c.Id).ToListAsync());
+    await db.Categorias
+        .OrderBy(c => c.Id)
+        .Select(c => new {
+            c.Id,
+            c.Nombre,
+            c.IconoUrl
+        })
+        .ToListAsync());
+
 
 /* ---------- INCIDENCIAS ---------- */
 app.MapPost("/incidents", async ([FromBody] CreateIncidentDto dto, AppDb db) =>
@@ -85,7 +93,7 @@ app.MapPost("/incidents", async ([FromBody] CreateIncidentDto dto, AppDb db) =>
     return Results.Created($"/incidents/{inc.Id}", new { inc.Id });
 });
 
-// Obtener por bbox (actualizado)
+// Obtener por bbox (ACTUALIZADO)
 app.MapGet("/incidents", async (
     double minLon, double minLat, double maxLon, double maxLat, int? limit, AppDb db) =>
 {
@@ -95,6 +103,7 @@ app.MapGet("/incidents", async (
 
     var query = db.Incidencias
         .Include(i => i.Estado)
+        .Include(i => i.Categoria) // ← INCLUIR CATEGORÍA
         .Where(i => i.Ubicacion != null && i.Ubicacion.Intersects(box))
         .OrderByDescending(i => i.Timestamp)
         .Select(i => new IncidentVm
@@ -106,13 +115,14 @@ app.MapGet("/incidents", async (
             Estado = i.Estado.Nombre,
             Lat = i.Ubicacion.Y,
             Lon = i.Ubicacion.X,
-            Timestamp = i.Timestamp
+            Timestamp = i.Timestamp,
+            IconoUrl = i.Categoria.IconoUrl // ← NUEVO: incluir el icono
         });
 
     return await query.Take(limit ?? 500).ToListAsync();
 });
 
-// Obtener por radio (actualizado)
+// Obtener por radio (ACTUALIZADO)
 app.MapGet("/incidents/near", async (double lat, double lon, double radius, int? limit, AppDb db) =>
 {
     var gf = NtsGeometryServices.Instance.CreateGeometryFactory(srid: 4326);
@@ -120,6 +130,7 @@ app.MapGet("/incidents/near", async (double lat, double lon, double radius, int?
 
     var query = db.Incidencias
         .Include(i => i.Estado)
+        .Include(i => i.Categoria) // ← INCLUIR CATEGORÍA
         .Where(i => i.Ubicacion.IsWithinDistance(p, radius))
         .OrderByDescending(i => i.Timestamp)
         .Select(i => new IncidentVm
@@ -131,7 +142,8 @@ app.MapGet("/incidents/near", async (double lat, double lon, double radius, int?
             Estado = i.Estado.Nombre,
             Lat = i.Ubicacion.Y,
             Lon = i.Ubicacion.X,
-            Timestamp = i.Timestamp
+            Timestamp = i.Timestamp,
+            IconoUrl = i.Categoria.IconoUrl // ← NUEVO: incluir el icono
         });
 
     return await query.Take(limit ?? 200).ToListAsync();
@@ -223,7 +235,8 @@ app.MapGet("/incidents/filter", async (
             Estado = i.Estado.Nombre,
             Lat = i.Ubicacion.Y,
             Lon = i.Ubicacion.X,
-            Timestamp = i.Timestamp
+            Timestamp = i.Timestamp,
+            IconoUrl = i.Categoria.IconoUrl // ← NUEVO: incluir el icono
         })
         .ToListAsync();
 
@@ -500,6 +513,22 @@ app.MapPost("/auth/change-password", async ([FromBody] ChangePasswordDto dto, Ap
     return Results.Ok(new { message = "Contraseña actualizada correctamente." });
 });
 
+
+// Endpoint opcional para actualizar automáticamente las URLs de iconos
+app.MapPost("/categories/update-icons", async (AppDb db) =>
+{
+    // ⚠️ CAMBIAR ESTE BASE URL CON TU PROJECT ID REAL DE SUPABASE
+    string baseUrl = "https://gsjjoqajnpfxvjusettt.supabase.co/storage/v1/object/public/LogosCategorias/";
+
+    var categorias = await db.Categorias.ToListAsync();
+    foreach (var cat in categorias)
+    {
+        cat.IconoUrl = $"{baseUrl}{cat.Nombre.ToLower()}.png";
+    }
+
+    await db.SaveChangesAsync();
+    return Results.Ok(new { message = "URLs de iconos actualizadas correctamente." });
+});
 
 
 app.Run();

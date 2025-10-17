@@ -1,5 +1,6 @@
 ﻿using IntegrarMapa.Models;
 using IntegrarMapa.Services;
+using IntegrarMapa.Helpers;
 
 namespace IntegrarMapa;
 
@@ -31,6 +32,9 @@ public partial class LoginPage : ContentPage
             return;
         }
 
+        // 🧠 Guardar datos de sesión del usuario
+        SesionUsuario.IniciarSesion(result.Id);
+
         await DisplayAlert("Bienvenido", $"Hola {result.Nombre} ({result.Rol})", "OK");
 
         // Redirigir según el rol
@@ -48,11 +52,8 @@ public partial class LoginPage : ContentPage
         await Navigation.PushAsync(new RegisterPage());
     }
 
-
     private async void OnCambiarContrasenaClicked(object sender, EventArgs e)
     {
         await Navigation.PushAsync(new ChangePasswordPage());
     }
-
-
 }

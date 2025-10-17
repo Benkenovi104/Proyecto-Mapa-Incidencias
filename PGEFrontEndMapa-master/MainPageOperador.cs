@@ -7,7 +7,7 @@ namespace IntegrarMapa
 {
     public class MainPageOperador : MainPage
     {
-        public MainPageOperador() : base(1) // 👈 tipoUsuario = 1 (operador)
+        public MainPageOperador() : base(2) // 👈 tipoUsuario = 1 (operador)
         {
             AgregarPanelInferior();
         }

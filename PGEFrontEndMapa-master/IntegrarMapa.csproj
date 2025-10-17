@@ -94,6 +94,9 @@
 	  <MauiXaml Update="GestionUsuariosPage.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
+	  <MauiXaml Update="NuevaIncidenciaPage.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
 	  <MauiXaml Update="PanelIncidenciasPage.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>

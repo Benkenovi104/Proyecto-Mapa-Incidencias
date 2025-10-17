@@ -62,7 +62,9 @@ public class AppDb : DbContext
             e.HasKey(x => x.Id);
             e.Property(x => x.Id).HasColumnName("id");
             e.Property(x => x.Nombre).HasColumnName("nombre");
+            e.Property(x => x.IconoUrl).HasColumnName("iconourl"); // ← nuevo
         });
+
 
         mb.Entity<Incidencia>(e =>
         {

@@ -1,13 +1,16 @@
 ﻿using Mapsui;
-using Mapsui.Tiling;
-using Mapsui.Projections;
 using Mapsui.Layers;
+using Mapsui.Projections;
 using Mapsui.Providers;
 using Mapsui.Styles;
+using Mapsui.Tiling;
 using Mapsui.UI.Maui;
 using System.Collections.ObjectModel;
+using System.Net.Http.Json;
 using Brush = Mapsui.Styles.Brush;
 using Color = Mapsui.Styles.Color;
+using IntegrarMapa.Models;
+using IntegrarMapa.Services;
 
 namespace IntegrarMapa;
 
@@ -16,7 +19,8 @@ public partial class MainPage : ContentPage
     private bool modoAgregar = false;
     private MemoryLayer pinLayer;
     private ObservableCollection<Incidencia> incidencias;
-    private int tipoUsuario; // 1 = operador, 2 = cliente
+    private int tipoUsuario; // 1 = cliente, 2 = operador
+    private readonly ApiService _apiService = new(); // ✅ Agregado
 
 
     public MainPage(int tipoUsuario = 2)
@@ -29,7 +33,6 @@ public partial class MainPage : ContentPage
         var map = new Mapsui.Map();
         map.Layers.Add(OpenStreetMap.CreateTileLayer());
 
-
         // Capa de pines
         pinLayer = new MemoryLayer
         {
@@ -39,8 +42,8 @@ public partial class MainPage : ContentPage
         };
         map.Layers.Add(pinLayer);
 
-        // Vista inicial → Buenos Aires
-        var (x, y) = SphericalMercator.FromLonLat(-58.3816, -34.6037);
+        // Vista inicial → Cordoba
+        var (x, y) = SphericalMercator.FromLonLat(-64.1888, -31.4201);
         var center = new MPoint(x, y);
         map.Home = n => n.CenterOn(center);
 
@@ -52,6 +55,101 @@ public partial class MainPage : ContentPage
         // Cargar el menú inicial
         MenuContainer.Content = CrearVistaMenu();
     }
+
+    // ✅ Se ejecuta cuando la página aparece
+    protected override async void OnAppearing()
+    {
+        base.OnAppearing();
+        await CargarIncidenciasAsync(); // ← carga las incidencias en el mapa
+    }
+
+    // ✅ Nuevo método para cargar incidencias desde la API
+    private async Task CargarIncidenciasAsync()
+    {
+        try
+        {
+            // ✅ SOLUCIÓN: Recrear la capa en lugar de limpiar cache
+            var nuevaCapa = new MemoryLayer
+            {
+                Name = "Incidencias",
+                Features = new List<IFeature>(),
+                IsMapInfoLayer = true
+            };
+            var lista = await _apiService.GetIncidenciasAsync();
+            var features = new List<IFeature>();
+
+            foreach (var item in lista)
+            {
+                var (x, y) = SphericalMercator.FromLonLat(item.Lon, item.Lat);
+
+                IStyle estilo;
+
+                if (!string.IsNullOrEmpty(item.IconoUrl))
+                {
+                    try
+                    {
+                        var http = new HttpClient();
+                        var bytes = await http.GetByteArrayAsync(item.IconoUrl);
+                        var bitmapId = BitmapRegistry.Instance.Register(bytes);
+
+                        // ✅ FORMA CORRECTA - Tamaño fijo en Mapsui
+                        estilo = new SymbolStyle
+                        {
+                            BitmapId = bitmapId,
+                            SymbolScale = 0.08, // ← Este es el control principal del tamaño
+                            UnitType = UnitType.Pixel, // ← Mantener en píxeles
+                        };
+
+                        Console.WriteLine($"✅ Icono cargado - Tamaño fijo para incidencia {item.Id}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"❌ Error cargando icono: {ex.Message}");
+                        estilo = CrearEstiloPorDefecto();
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"⚠️ No hay icono para incidencia {item.Id}");
+                    estilo = CrearEstiloPorDefecto();
+                }
+
+                var feature = new PointFeature(new MPoint(x, y))
+                {
+                    ["Descripcion"] = item.Descripcion,
+                    ["CategoriaId"] = item.CategoriaId,
+                    ["Estado"] = item.Estado,
+                    ["IconoUrl"] = item.IconoUrl
+                };
+
+                feature.Styles.Add(estilo);
+                features.Add(feature);
+            }
+
+            pinLayer.Features = features;
+            mapControl.Refresh();
+
+            Console.WriteLine($"🗺️ Mapa actualizado con {features.Count} incidencias (tamaño fijo)");
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlert("Error", $"No se pudieron cargar las incidencias: {ex.Message}", "OK");
+        }
+    }
+
+    private IStyle CrearEstiloPorDefecto()
+    {
+        // ✅ Tamaño fijo también para íconos por defecto
+        return new SymbolStyle
+        {
+            Fill = new Brush(Color.Red),
+            SymbolType = SymbolType.Ellipse,
+            SymbolScale = 0.15, // ← Controla el tamaño del círculo
+            UnitType = UnitType.Pixel,
+            Line = new Pen(Color.DarkRed, 2)
+        };
+    }
+
 
     // =========================
     // 🚩 EVENTOS DE MENÚ
@@ -106,6 +204,8 @@ public partial class MainPage : ContentPage
             }
         }
     }
+
+
 
     // =========================
     // 🚩 VISTAS DEL MENÚ
@@ -302,117 +402,12 @@ public partial class MainPage : ContentPage
         }
         };
     }
+
     private async Task MostrarFormularioIncidenciaAsync(MPoint posicion)
     {
-        // Crear los controles del formulario
-        var entryTitulo = new Entry { Placeholder = "Título (opcional)" };
-
-        var pickerTipo = new Picker { Title = "Tipo de incidencia" };
-        pickerTipo.Items.Add("Pozo en la calle");
-        pickerTipo.Items.Add("Choque automovilístico");
-        pickerTipo.Items.Add("Incendio");
-
-        var imgPreview = new Image
-        {
-            HeightRequest = 150,
-            WidthRequest = 150,
-            BackgroundColor = Colors.LightGray,
-            Aspect = Aspect.AspectFill
-        };
-
-        var btnImagen = new Button
-        {
-            Text = "📷 Cargar o tomar foto",
-            BackgroundColor = Colors.LightGray,
-            TextColor = Colors.Black
-        };
-
-        FileResult? fotoSeleccionada = null;
-
-        btnImagen.Clicked += async (s, e) =>
-        {
-            var action = await DisplayActionSheet("Seleccionar imagen", "Cancelar", null, "Tomar foto", "Elegir de galería");
-            if (action == "Tomar foto")
-            {
-                fotoSeleccionada = await MediaPicker.CapturePhotoAsync();
-            }
-            else if (action == "Elegir de galería")
-            {
-                fotoSeleccionada = await MediaPicker.PickPhotoAsync();
-            }
-
-            if (fotoSeleccionada != null)
-            {
-                imgPreview.Source = ImageSource.FromFile(fotoSeleccionada.FullPath);
-            }
-        };
-
-        var btnCrear = new Button
-        {
-            Text = "✅ Crear incidencia",
-            BackgroundColor = Colors.Red,
-            TextColor = Colors.White,
-            CornerRadius = 10
-        };
-
-        // Mostrar formulario en un modal
-        var formulario = new StackLayout
-        {
-            Padding = 20,
-            Spacing = 10,
-            Children = {
-            new Label { Text = "🆕 Nueva Incidencia", FontAttributes = FontAttributes.Bold, FontSize = 20, HorizontalOptions = LayoutOptions.Center },
-            entryTitulo,
-            pickerTipo,
-            btnImagen,
-            imgPreview,
-            btnCrear
-        }
-        };
-
-        var contentPage = new ContentPage
-        {
-            Content = new ScrollView { Content = formulario }
-        };
-
-        await Navigation.PushModalAsync(contentPage);
-
-        btnCrear.Clicked += async (s, e) =>
-        {
-            if (pickerTipo.SelectedIndex == -1)
-            {
-                await DisplayAlert("Error", "Seleccioná un tipo de incidencia.", "OK");
-                return;
-            }
-
-            // Crear la nueva incidencia
-            var nueva = new Incidencia
-            {
-                Titulo = string.IsNullOrWhiteSpace(entryTitulo.Text)
-                            ? pickerTipo.SelectedItem.ToString() ?? "Sin título"
-                            : entryTitulo.Text ?? "Sin título",
-                Coordenadas = $"Lat: {posicion.Y:0.0000}, Lon: {posicion.X:0.0000}"
-            };
-
-            incidencias.Add(nueva);
-
-            // Crear pin en el mapa
-            var pin = new PointFeature(posicion);
-            pin.Styles.Add(new SymbolStyle
-            {
-                SymbolScale = 0.8,
-                Fill = new Brush(Color.Red),
-                Outline = new Pen(Color.White, 2)
-            });
-            (pinLayer.Features as List<IFeature>)?.Add(pin);
-            mapControl.Refresh();
-
-            MenuContainer.Content = CrearVistaIncidencias();
-
-            await Navigation.PopModalAsync();
-        };
+        var (lon, lat) = SphericalMercator.ToLonLat(posicion.X, posicion.Y);
+        await Navigation.PushModalAsync(new NuevaIncidenciaPage(lat, lon));
     }
-
 }
 
 public class Incidencia
@@ -420,3 +415,5 @@ public class Incidencia
     public string Titulo { get; set; } = string.Empty;
     public string Coordenadas { get; set; } = string.Empty;
 }
+
+
