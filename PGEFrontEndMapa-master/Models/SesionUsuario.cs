@@ -1,22 +1,19 @@
-﻿namespace IntegrarMapa.Helpers
+﻿namespace IntegrarMapa.Helpers;
+
+public static class SesionUsuario
 {
-    public static class SesionUsuario
+    private const string UserIdKey = "UserId";
+
+    public static int UserId => Preferences.Get(UserIdKey, 0);
+    public static bool EstaLogueado => UserId > 0;
+
+    public static void IniciarSesion(int userId)
     {
-        public static int UserId { get; private set; }
-        public static string? Token { get; private set; }
+        Preferences.Set(UserIdKey, userId);
+    }
 
-        public static void IniciarSesion(int userId, string? token = null)
-        {
-            UserId = userId;
-            Token = token;
-        }
-
-        public static void CerrarSesion()
-        {
-            UserId = 0;
-            Token = null;
-        }
-
-        public static bool EstaLogueado => UserId > 0;
+    public static void CerrarSesion()
+    {
+        Preferences.Remove(UserIdKey);
     }
 }

@@ -11,6 +11,8 @@ using Brush = Mapsui.Styles.Brush;
 using Color = Mapsui.Styles.Color;
 using IntegrarMapa.Models;
 using IntegrarMapa.Services;
+using IntegrarMapa.Helpers;
+
 
 namespace IntegrarMapa;
 
@@ -49,8 +51,8 @@ public partial class MainPage : ContentPage
 
         mapControl.Map = map;
 
-        // Capturar clicks en el mapa
-        mapControl.Info += OnMapInfo;
+        // ✅ CAMBIO: Usar OnMapTapped en lugar de OnMapInfo
+        mapControl.Info += OnMapTapped;
 
         // Cargar el menú inicial
         MenuContainer.Content = CrearVistaMenu();
@@ -63,7 +65,115 @@ public partial class MainPage : ContentPage
         await CargarIncidenciasAsync(); // ← carga las incidencias en el mapa
     }
 
-    // ✅ Nuevo método para cargar incidencias desde la API
+    // ✅ NUEVO MÉTODO: Manejar clicks en el mapa (íconos y mapa vacío)
+    private async void OnMapTapped(object? sender, MapInfoEventArgs e)
+    {
+        // ✅ 1. Si se tocó un ícono/feature
+        if (e.MapInfo?.Feature is PointFeature pointFeature)
+        {
+            // Obtener los datos de la incidencia desde el feature
+            var descripcion = pointFeature["Descripcion"]?.ToString() ?? "Sin descripción";
+            var categoriaId = pointFeature["CategoriaId"]?.ToString() ?? "0";
+            var estado = pointFeature["Estado"]?.ToString() ?? "Desconocido";
+            var iconoUrl = pointFeature["IconoUrl"]?.ToString();
+
+            // Obtener coordenadas
+            var point = pointFeature.Point;
+            var (lon, lat) = SphericalMercator.ToLonLat(point.X, point.Y);
+
+            Console.WriteLine($"📍 Ícono tocado: {descripcion} en {lat}, {lon}");
+
+            // Mostrar detalles
+            await MostrarDetalleIncidenciaAsync(descripcion, estado, lat, lon, iconoUrl);
+        }
+        // ✅ 2. Si está en modo agregar y se tocó el mapa vacío
+        else if (modoAgregar && e.MapInfo?.WorldPosition is MPoint pos)
+        {
+            modoAgregar = false;
+            await MostrarFormularioIncidenciaAsync(pos);
+        }
+    }
+
+    // ✅ NUEVO MÉTODO: Mostrar detalles de incidencia al tocar ícono (usando DisplayAlert)
+    private async Task MostrarDetalleIncidenciaAsync(string descripcion, string estado, double lat, double lon, string? iconoUrl)
+    {
+        // Crear mensaje con los detalles
+        var mensaje = $"📝 {descripcion}\n\n" +
+                     $"🔄 Estado: {estado}\n" +
+                     $"📍 Coordenadas: {lat:F4}, {lon:F4}";
+
+        if (!string.IsNullOrEmpty(iconoUrl))
+        {
+            // Si tiene foto, mostrar opciones
+            var accion = await DisplayActionSheet(
+                "📋 Detalles de Incidencia",
+                "Cancelar",
+                null,
+                "Ver detalles",
+                "📸 Ver Foto");
+
+            if (accion == "Ver detalles")
+            {
+                await DisplayAlert("📋 Detalles de Incidencia", mensaje, "Cerrar");
+            }
+            else if (accion == "📸 Ver Foto")
+            {
+                await MostrarFotoCompletaAsync(iconoUrl);
+            }
+        }
+        else
+        {
+            // Si no tiene foto, solo mostrar detalles
+            await DisplayAlert("📋 Detalles de Incidencia", mensaje, "Cerrar");
+        }
+    }
+
+    // ✅ NUEVO MÉTODO: Mostrar foto completa
+    private async Task MostrarFotoCompletaAsync(string? fotoUrl)
+    {
+        if (string.IsNullOrEmpty(fotoUrl))
+        {
+            await DisplayAlert("Info", "Esta incidencia no tiene foto", "OK");
+            return;
+        }
+
+        // Crear una página temporal para mostrar la foto
+        var fotoPage = new ContentPage
+        {
+            Title = "Foto de la Incidencia",
+            BackgroundColor = Colors.Black,
+            Content = new StackLayout
+            {
+                VerticalOptions = LayoutOptions.Center,
+                HorizontalOptions = LayoutOptions.Center,
+                Children =
+                {
+                    new Image
+                    {
+                        Source = ImageSource.FromUri(new Uri(fotoUrl)),
+                        Aspect = Aspect.AspectFit,
+                        MaximumHeightRequest = 500,
+                        MaximumWidthRequest = 500,
+                        BackgroundColor = Colors.Black
+                    },
+                    new Button
+                    {
+                        Text = "Cerrar",
+                        BackgroundColor = Colors.Red,
+                        TextColor = Colors.White,
+                        HorizontalOptions = LayoutOptions.Center,
+                        CornerRadius = 8,
+                        Margin = new Thickness(0, 20, 0, 0)
+                    }
+                    .Invoke(btn => btn.Clicked += async (s, e) => await Navigation.PopModalAsync())
+                }
+            }
+        };
+
+        await Navigation.PushModalAsync(fotoPage);
+    }
+
+    // ✅ Método para cargar incidencias desde la API
     private async Task CargarIncidenciasAsync()
     {
         try
@@ -119,7 +229,8 @@ public partial class MainPage : ContentPage
                     ["Descripcion"] = item.Descripcion,
                     ["CategoriaId"] = item.CategoriaId,
                     ["Estado"] = item.Estado,
-                    ["IconoUrl"] = item.IconoUrl
+                    ["IconoUrl"] = item.IconoUrl,
+                    ["Id"] = item.Id // ← Agregar ID también
                 };
 
                 feature.Styles.Add(estilo);
@@ -150,7 +261,6 @@ public partial class MainPage : ContentPage
         };
     }
 
-
     // =========================
     // 🚩 EVENTOS DE MENÚ
     // =========================
@@ -165,23 +275,9 @@ public partial class MainPage : ContentPage
         await Navigation.PushModalAsync(new BuscarPage());
     }
 
-
     private async void OnIrPerfilClicked(object? sender, EventArgs e)
     {
         await Navigation.PushModalAsync(new PerfilPage());
-    }
-
-    // =========================
-    // 🚩 EVENTOS DEL MAPA
-    // =========================
-    private async void OnMapInfo(object? sender, MapInfoEventArgs e)
-    {
-        if (!modoAgregar) return;
-        if (e.MapInfo?.WorldPosition is MPoint pos)
-        {
-            modoAgregar = false;
-            await MostrarFormularioIncidenciaAsync(pos);
-        }
     }
 
     private async void OnIncidenciaMenuClicked(object? sender, EventArgs e)
@@ -205,11 +301,29 @@ public partial class MainPage : ContentPage
         }
     }
 
+    // 🚪 Salir - Redirigir al Login
+    private async void OnSalirClicked(object? sender, EventArgs e)
+    {
+        bool confirmar = await DisplayAlert(
+            "Cerrar sesión",
+            "¿Estás seguro de que querés salir?",
+            "Sí, salir",
+            "Cancelar"
+        );
 
+        if (confirmar)
+        {
+            // Cerrar sesión
+            SesionUsuario.CerrarSesion();
 
-    // =========================
-    // 🚩 VISTAS DEL MENÚ
-    // =========================
+            // Redirigir al Login
+            if (Application.Current is App app)
+            {
+                app.SetMainPage(new LoginPage());
+            }
+        }
+    }
+
     private View CrearVistaMenu()
     {
         var lblTitulo = new Label
@@ -259,8 +373,7 @@ public partial class MainPage : ContentPage
             TextColor = Microsoft.Maui.Graphics.Color.FromArgb("#333333"),
             CornerRadius = 12
         };
-        btnSalir.Clicked += (s, e) => Application.Current?.Quit();
-
+        btnSalir.Clicked += OnSalirClicked; // ← CAMBIADO
 
         var separador = new BoxView
         {
@@ -273,17 +386,16 @@ public partial class MainPage : ContentPage
         {
             Spacing = 10,
             Children =
-        {
-            lblTitulo,
-            btnAgregar,
-            btnBuscar,
-            btnPerfil,
-            separador,
-            btnSalir
-        }
+    {
+        lblTitulo,
+        btnAgregar,
+        btnBuscar,
+        btnPerfil,
+        separador,
+        btnSalir
+    }
         };
     }
-
 
     private View CrearVistaIncidencias()
     {
@@ -410,10 +522,18 @@ public partial class MainPage : ContentPage
     }
 }
 
+// Clase de extensión para el método Invoke (para hacer fluent API)
+public static class ControlExtensions
+{
+    public static T Invoke<T>(this T control, Action<T> action) where T : VisualElement
+    {
+        action(control);
+        return control;
+    }
+}
+
 public class Incidencia
 {
     public string Titulo { get; set; } = string.Empty;
     public string Coordenadas { get; set; } = string.Empty;
 }
-
-

@@ -531,4 +531,103 @@ app.MapPost("/categories/update-icons", async (AppDb db) =>
 });
 
 
+
+// ======================
+// 👤 PERFIL DE USUARIO
+// ======================
+
+// Obtener datos del usuario por ID
+app.MapGet("/users/{id:int}", async (int id, AppDb db) =>
+{
+    var user = await db.Usuarios
+        .Include(u => u.Rol)
+        .Where(u => u.Id == id)
+        .Select(u => new
+        {
+            u.Id,
+            u.Nombre,
+            u.Apellido,
+            u.Username,
+            u.Email,
+            Rol = u.Rol.Nombre
+        })
+        .FirstOrDefaultAsync();
+
+    if (user is null)
+        return Results.NotFound($"Usuario con ID {id} no encontrado");
+
+    return Results.Ok(user);
+});
+
+// Actualizar perfil de usuario
+app.MapPut("/users/{id:int}", async (int id, [FromBody] UpdateUserDto dto, AppDb db) =>
+{
+    var user = await db.Usuarios.FindAsync(id);
+    if (user is null)
+        return Results.NotFound($"Usuario con ID {id} no encontrado");
+
+    // Verificar si el email ya existe en otro usuario
+    if (!string.IsNullOrWhiteSpace(dto.Email) && dto.Email != user.Email)
+    {
+        var emailExists = await db.Usuarios.AnyAsync(u => u.Email == dto.Email && u.Id != id);
+        if (emailExists)
+            return Results.BadRequest("Ya existe un usuario con ese email");
+    }
+
+    // Verificar si el username ya existe en otro usuario
+    if (!string.IsNullOrWhiteSpace(dto.Username) && dto.Username != user.Username)
+    {
+        var usernameExists = await db.Usuarios.AnyAsync(u => u.Username == dto.Username && u.Id != id);
+        if (usernameExists)
+            return Results.BadRequest("Ya existe un usuario con ese nombre de usuario");
+    }
+
+    // Actualizar campos
+    if (!string.IsNullOrWhiteSpace(dto.Nombre))
+        user.Nombre = dto.Nombre;
+
+    if (!string.IsNullOrWhiteSpace(dto.Apellido))
+        user.Apellido = dto.Apellido;
+
+    if (!string.IsNullOrWhiteSpace(dto.Username))
+        user.Username = dto.Username;
+
+    if (!string.IsNullOrWhiteSpace(dto.Email))
+        user.Email = dto.Email;
+
+    await db.SaveChangesAsync();
+
+    return Results.Ok(new { message = "Perfil actualizado correctamente" });
+});
+
+// Eliminar cuenta de usuario
+app.MapDelete("/users/{id:int}", async (int id, AppDb db) =>
+{
+    var user = await db.Usuarios.FindAsync(id);
+    if (user is null)
+        return Results.NotFound($"Usuario con ID {id} no encontrado");
+
+    // Opcional: verificar si el usuario tiene incidencias y decidir qué hacer
+    var tieneIncidencias = await db.Incidencias.AnyAsync(i => i.User_Id == id);
+    if (tieneIncidencias)
+    {
+        // Opción 1: Eliminar también las incidencias
+        var incidencias = db.Incidencias.Where(i => i.User_Id == id);
+        db.Incidencias.RemoveRange(incidencias);
+
+        // Opción 2: O mantener las incidencias pero asignarlas a un usuario genérico
+        // var incidencias = db.Incidencias.Where(i => i.User_Id == id);
+        // foreach (var inc in incidencias)
+        // {
+        //     inc.User_Id = 1; // ID de usuario genérico
+        // }
+    }
+
+    db.Usuarios.Remove(user);
+    await db.SaveChangesAsync();
+
+    return Results.Ok(new { message = "Cuenta eliminada correctamente" });
+});
+
+
 app.Run();

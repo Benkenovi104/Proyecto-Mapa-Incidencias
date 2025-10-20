@@ -77,21 +77,36 @@ public class ApiService
     // ======================
     public async Task<bool> ChangePasswordAsync(string email, string oldPassword, string newPassword)
     {
-        var dto = new ChangePasswordDto
-        {
-            Email = email,
-            OldPassword = oldPassword,
-            NewPassword = newPassword
-        };
-
         try
         {
+            var dto = new ChangePasswordDto
+            {
+                Email = email,
+                OldPassword = oldPassword,
+                NewPassword = newPassword
+            };
+
+            Console.WriteLine($"🔐 Intentando cambiar contraseña para: {email}");
+
             var response = await _http.PostAsJsonAsync("/auth/change-password", dto);
-            return response.IsSuccessStatusCode;
+
+            Console.WriteLine($"📡 Respuesta del servidor: {response.StatusCode}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                Console.WriteLine("✅ Contraseña cambiada exitosamente");
+                return true;
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"❌ Error del servidor: {errorContent}");
+                return false;
+            }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error de conexión: {ex.Message}");
+            Console.WriteLine($"💥 Error de conexión: {ex.Message}");
             return false;
         }
     }
@@ -230,6 +245,77 @@ public class ApiService
         catch (Exception ex)
         {
             Console.WriteLine($"Error al crear incidencia: {ex.Message}");
+            return false;
+        }
+    }
+
+
+    // ======================
+    // 👤 PERFIL DE USUARIO
+    // ======================
+
+    public async Task<UserProfileDto?> GetUserProfileAsync(int userId)
+    {
+        try
+        {
+            var response = await _http.GetAsync($"/users/{userId}");
+            if (response.IsSuccessStatusCode)
+                return await response.Content.ReadFromJsonAsync<UserProfileDto>();
+
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al obtener perfil: {ex.Message}");
+            return null;
+        }
+    }
+
+    public async Task<bool> UpdateUserProfileAsync(int userId, string campo, string valor)
+    {
+        try
+        {
+            var updateData = new Dictionary<string, string>();
+
+            switch (campo.ToLower())
+            {
+                case "nombre":
+                    updateData["Nombre"] = valor;
+                    break;
+                case "apellido":
+                    updateData["Apellido"] = valor;
+                    break;
+                case "username":
+                    updateData["Username"] = valor;
+                    break;
+                case "email":
+                    updateData["Email"] = valor;
+                    break;
+            }
+
+            var json = JsonSerializer.Serialize(updateData);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            var response = await _http.PutAsync($"/users/{userId}", content);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al actualizar perfil: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<bool> DeleteUserAsync(int userId)
+    {
+        try
+        {
+            var response = await _http.DeleteAsync($"/users/{userId}");
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al eliminar usuario: {ex.Message}");
             return false;
         }
     }
