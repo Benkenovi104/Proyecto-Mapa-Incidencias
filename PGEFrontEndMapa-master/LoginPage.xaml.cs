@@ -15,12 +15,16 @@ public partial class LoginPage : ContentPage
 
     private async void OnIniciarSesionClicked(object sender, EventArgs e)
     {
-        string email = entryUsuario.Text?.Trim() ?? string.Empty;
+        // Ocultar mensajes previos
+        lblMensajeError.IsVisible = false;
+        lblMensajeExito.IsVisible = false;
+
+        string email = entryEmail.Text?.Trim() ?? string.Empty;
         string password = entryContrasena.Text?.Trim() ?? string.Empty;
 
         if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password))
         {
-            await DisplayAlert("Error", "Debes completar todos los campos", "OK");
+            MostrarError("Debes completar todos los campos");
             return;
         }
 
@@ -28,16 +32,22 @@ public partial class LoginPage : ContentPage
 
         if (result == null)
         {
-            await DisplayAlert("Error", "Mail o contraseña incorrectos", "OK");
+            MostrarError("Mail o contraseña incorrectos");
             return;
         }
 
-        // 🧠 Guardar datos de sesión del usuario
+        // --- El inicio de sesión fue exitoso ---
+
+        // 1. Mostrar mensaje de éxito en la UI
+        MostrarExito($"¡Bienvenido, {result.Nombre}!");
+
+        // 2. Esperar un momento para que el usuario vea el mensaje
+        await Task.Delay(1500); // Espera 1.5 segundos
+
+        // 3. Guardar datos de sesión del usuario
         SesionUsuario.IniciarSesion(result.Id);
 
-        await DisplayAlert("Bienvenido", $"Hola {result.Nombre} ({result.Rol})", "OK");
-
-        // Redirigir según el rol
+        // 4. Redirigir según el rol
         if (Application.Current is App app)
         {
             if (result.Rol.ToLower() == "administrador")
@@ -45,6 +55,24 @@ public partial class LoginPage : ContentPage
             else
                 app.SetMainPage(new MainPage());
         }
+    }
+
+    /// <summary>
+    /// Método para mostrar un mensaje de error en la UI.
+    /// </summary>
+    private void MostrarError(string mensaje)
+    {
+        lblMensajeError.Text = mensaje;
+        lblMensajeError.IsVisible = true;
+    }
+
+    /// <summary>
+    /// Método para mostrar un mensaje de éxito en la UI.
+    /// </summary>
+    private void MostrarExito(string mensaje)
+    {
+        lblMensajeExito.Text = mensaje;
+        lblMensajeExito.IsVisible = true;
     }
 
     private async void OnRegistrarseClicked(object sender, EventArgs e)
@@ -57,3 +85,4 @@ public partial class LoginPage : ContentPage
         await Navigation.PushAsync(new ChangePasswordPage());
     }
 }
+

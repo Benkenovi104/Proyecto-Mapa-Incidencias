@@ -12,10 +12,22 @@
                    HorizontalOptions="Center"
                    TextColor="Black" />
 
-            <!-- Usuario -->
-            <Entry x:Name="entryUsuario"
-                   Placeholder="Usuario"
-                   Keyboard="Default"
+            <!-- LABEL PARA MOSTRAR MENSAJE DE ÉXITO -->
+            <Label x:Name="lblMensajeExito"
+                   IsVisible="false"
+                   TextColor="Green"
+                   HorizontalOptions="Center"/>
+
+            <!-- LABEL PARA MOSTRAR ERRORES -->
+            <Label x:Name="lblMensajeError"
+                   IsVisible="false"
+                   TextColor="Red"
+                   HorizontalOptions="Center"/>
+
+            <!-- Usuario ahora es Mail -->
+            <Entry x:Name="entryEmail"
+                   Placeholder="Mail"
+                   Keyboard="Email"
                    ReturnType="Next" />
 
             <!-- Contraseña -->
@@ -24,7 +36,7 @@
                    IsPassword="True"
                    ReturnType="Done" />
 
-            <!-- Botones -->
+            <!-- Botones (sin cambios de estilo) -->
             <Button Text="Iniciar sesion"
                     BackgroundColor="#2196F3"
                     TextColor="White"
@@ -46,3 +58,4 @@
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>
+
