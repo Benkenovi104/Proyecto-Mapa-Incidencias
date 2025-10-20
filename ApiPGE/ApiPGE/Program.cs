@@ -629,5 +629,44 @@ app.MapDelete("/users/{id:int}", async (int id, AppDb db) =>
     return Results.Ok(new { message = "Cuenta eliminada correctamente" });
 });
 
+// Endpoint específico para crear operadores (administradores)
+app.MapPost("/auth/register-admin", async ([FromBody] RegisterDto dto, AppDb db) =>
+{
+    if (string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.Password))
+        return Results.BadRequest("Email y contraseña son obligatorios.");
+
+    var existe = await db.Usuarios.AnyAsync(u => u.Email == dto.Email);
+    if (existe)
+        return Results.BadRequest("Ya existe un usuario registrado con ese email.");
+
+    // Buscar el rol "administrador"
+    var rolAdmin = await db.Roles.FirstOrDefaultAsync(r => r.Nombre.ToLower() == "administrador");
+    if (rolAdmin is null)
+        return Results.BadRequest("El rol 'administrador' no existe en la base de datos.");
+
+    var nuevo = new Usuario
+    {
+        Nombre = dto.Nombre,
+        Apellido = dto.Apellido,
+        Email = dto.Email,
+        Username = dto.Username,
+        Password = dto.Password,
+        RolId = rolAdmin.Id, // Siempre rol administrador
+        Fecha_Alta = DateTimeOffset.UtcNow
+    };
+
+    db.Usuarios.Add(nuevo);
+    await db.SaveChangesAsync();
+
+    return Results.Created($"/users/{nuevo.Id}", new
+    {
+        nuevo.Id,
+        nuevo.Nombre,
+        nuevo.Apellido,
+        nuevo.Email,
+        nuevo.Username,
+        Rol = rolAdmin.Nombre
+    });
+});
 
 app.Run();
