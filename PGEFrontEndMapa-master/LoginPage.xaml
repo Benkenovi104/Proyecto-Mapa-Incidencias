@@ -1,16 +1,16 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="IntegrarMapa.LoginPage"
-             Title="Iniciar Sesion">
+             Title="MiAppIncidencias">
 
     <ScrollView>
         <VerticalStackLayout Padding="40" Spacing="20" VerticalOptions="Center">
 
-            <Label Text="Iniciar sesion"
+            <Label Text="Iniciar sesión"
                    FontSize="28"
                    FontAttributes="Bold"
                    HorizontalOptions="Center"
-                   TextColor="Black" />
+                   TextColor="White" />
 
             <!-- LABEL PARA MOSTRAR MENSAJE DE ÉXITO -->
             <Label x:Name="lblMensajeExito"

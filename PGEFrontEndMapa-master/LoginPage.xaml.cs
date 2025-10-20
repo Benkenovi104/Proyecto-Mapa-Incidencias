@@ -41,13 +41,10 @@ public partial class LoginPage : ContentPage
         // 1. Mostrar mensaje de éxito en la UI
         MostrarExito($"¡Bienvenido, {result.Nombre}!");
 
-        // 2. Esperar un momento para que el usuario vea el mensaje
-        await Task.Delay(1500); // Espera 1.5 segundos
-
-        // 3. Guardar datos de sesión del usuario
+        // 2. Guardar datos de sesión del usuario
         SesionUsuario.IniciarSesion(result.Id);
 
-        // 4. Redirigir según el rol
+        // 3. Redirigir según el rol
         if (Application.Current is App app)
         {
             if (result.Rol.ToLower() == "administrador")
