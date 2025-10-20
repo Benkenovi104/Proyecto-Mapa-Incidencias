@@ -321,4 +321,59 @@ public class ApiService
             return false;
         }
     }
+
+
+
+    // ======================
+    // 👥 GESTIÓN DE USUARIOS
+    // ======================
+
+    public async Task<List<UsuarioDto>?> BuscarUsuariosAsync(string criterio, string valor)
+    {
+        try
+        {
+            var response = await _http.GetAsync($"/users/search?criterio={criterio}&valor={Uri.EscapeDataString(valor)}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<List<UsuarioDto>>();
+            }
+
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al buscar usuarios: {ex.Message}");
+            return null;
+        }
+    }
+
+    public async Task<bool> CambiarRolUsuarioAsync(int userId, string nuevoRol)
+    {
+        try
+        {
+            var dto = new { Rol = nuevoRol };
+            var response = await _http.PatchAsJsonAsync($"/users/{userId}/role", dto);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al cambiar rol: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<bool> EliminarUsuarioAsync(int userId)
+    {
+        try
+        {
+            var response = await _http.DeleteAsync($"/users/{userId}");
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al eliminar usuario: {ex.Message}");
+            return false;
+        }
+    }
 }
