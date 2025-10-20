@@ -192,7 +192,7 @@ public class ApiService
     }
 
     // ======================
-    // 🆕 Crear nuevo operador
+    // 🆕 Crear nuevo operador (administrador)
     // ======================
     public async Task<bool> RegisterWithRoleAsync(string nombre, string apellido, string email, string username, string password, string rol)
     {
@@ -205,18 +205,20 @@ public class ApiService
                 Email = email,
                 Username = username,
                 Password = password,
-                Rol = "administrador"
+                Rol = rol // "administrador"
             };
 
             var json = JsonSerializer.Serialize(data);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            var response = await _http.PostAsync($"{ApiConfig.BaseUrl}/auth/register", content);
+            // Usar el endpoint específico para administradores
+            var response = await _http.PostAsync($"{ApiConfig.BaseUrl}/auth/register-admin", content);
 
             return response.IsSuccessStatusCode;
         }
-        catch
+        catch (Exception ex)
         {
+            Console.WriteLine($"Error al crear operador: {ex.Message}");
             return false;
         }
     }
