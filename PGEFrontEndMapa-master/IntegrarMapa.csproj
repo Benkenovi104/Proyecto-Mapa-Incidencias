@@ -79,6 +79,12 @@
 	  <Compile Update="PerfilPage.xaml.cs">
 	    <DependentUpon>PerfilPage.xaml</DependentUpon>
 	  </Compile>
+	  <Compile Update="RegisterAdminPage.xaml.cs">
+	    <DependentUpon>RegisterAdminPage.xaml</DependentUpon>
+	  </Compile>
+		<Compile Update="AgregarOperadorPage.xaml.cs">
+			<DependentUpon>AgregarOperadorPage.xaml</DependentUpon>
+		</Compile>
 	</ItemGroup>
 
 	<ItemGroup>
@@ -103,9 +109,15 @@
 	  <MauiXaml Update="PerfilPage.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
+	  <MauiXaml Update="RegisterAdminPage.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
 	  <MauiXaml Update="RegisterPage.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
+		<MauiXaml Update="AgregarOperadorPage.xaml">
+			<Generator>MSBuild:Compile</Generator>
+		</MauiXaml>
 	</ItemGroup>
 
 </Project>

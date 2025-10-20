@@ -40,7 +40,7 @@ public partial class LoginPage : ContentPage
         // Redirigir según el rol
         if (Application.Current is App app)
         {
-            if (result.Rol.ToLower() == "operador")
+            if (result.Rol.ToLower() == "administrador")
                 app.SetMainPage(new MainPageOperador());
             else
                 app.SetMainPage(new MainPage());

@@ -177,6 +177,36 @@ public class ApiService
     }
 
     // ======================
+    // 🆕 Crear nuevo operador
+    // ======================
+    public async Task<bool> RegisterWithRoleAsync(string nombre, string apellido, string email, string username, string password, string rol)
+    {
+        try
+        {
+            var data = new
+            {
+                Nombre = nombre,
+                Apellido = apellido,
+                Email = email,
+                Username = username,
+                Password = password,
+                Rol = "administrador"
+            };
+
+            var json = JsonSerializer.Serialize(data);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            var response = await _http.PostAsync($"{ApiConfig.BaseUrl}/auth/register", content);
+
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    // ======================
     // 🆕 CREAR INCIDENCIA
     // ======================
     public async Task<bool> CrearIncidenciaAsync(int categoriaId, string descripcion, double lat, double lon)

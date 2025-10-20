@@ -86,9 +86,9 @@ namespace IntegrarMapa
             await Navigation.PushModalAsync(new GestionUsuariosPage());
         }
 
-        private void MostrarFormularioOperador()
+        private async void MostrarFormularioOperador()
         {
-            DisplayAlert("Agregar operador", "Aquí se abrirá el formulario para crear un nuevo operador.", "OK");
+            await Navigation.PushModalAsync(new AgregarOperadorPage());
         }
     }
 }

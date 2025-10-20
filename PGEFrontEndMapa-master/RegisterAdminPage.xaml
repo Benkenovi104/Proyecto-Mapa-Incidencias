@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="IntegrarMapa.AgregarOperadorPage"
+             Title="Nuevo Operador">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="30" Spacing="15">
+
+            <Label Text="Agregar nuevo operador" 
+                   FontSize="24"
+                   HorizontalOptions="Center" 
+                   TextColor="#512BD4"
+                   FontAttributes="Bold"/>
+
+            <Entry x:Name="entryNombre"
+                   Placeholder="Nombre"
+                   ClearButtonVisibility="WhileEditing"/>
+
+            <Entry x:Name="entryApellido"
+                   Placeholder="Apellido"
+                   ClearButtonVisibility="WhileEditing"/>
+
+            <Entry x:Name="entryEmail"
+                   Placeholder="Correo electrónico"
+                   Keyboard="Email"
+                   ClearButtonVisibility="WhileEditing"/>
+
+            <Entry x:Name="entryUsername"
+                   Placeholder="Usuario"
+                   ClearButtonVisibility="WhileEditing"/>
+
+            <Entry x:Name="entryPassword"
+                   Placeholder="Contraseña"
+                   IsPassword="True"
+                   ClearButtonVisibility="WhileEditing"/>
+
+            <Button Text="Crear Operador"
+                    BackgroundColor="#512BD4"
+                    TextColor="White"
+                    CornerRadius="10"
+                    Clicked="OnCrearOperadorClicked"/>
+
+            <Button Text="Volver"
+                    BackgroundColor="LightGray"
+                    TextColor="Black"
+                    CornerRadius="10"
+                    Clicked="OnVolverClicked"/>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
