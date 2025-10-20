@@ -28,7 +28,7 @@ public partial class LoginPage : ContentPage
 
         if (result == null)
         {
-            await DisplayAlert("Error", "Usuario o contraseña incorrectos", "OK");
+            await DisplayAlert("Error", "Mail o contraseña incorrectos", "OK");
             return;
         }
 
