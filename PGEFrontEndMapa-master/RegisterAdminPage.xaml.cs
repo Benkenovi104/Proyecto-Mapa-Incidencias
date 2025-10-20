@@ -36,7 +36,7 @@ public partial class AgregarOperadorPage : ContentPage
         if (success)
         {
             await DisplayAlert("Éxito", "Operador agregado correctamente", "OK");
-            await Navigation.PopAsync();
+            await Navigation.PushAsync(new MainPageOperador());
         }
         else
         {
@@ -46,6 +46,8 @@ public partial class AgregarOperadorPage : ContentPage
 
     private async void OnVolverClicked(object sender, EventArgs e)
     {
-        await Navigation.PopAsync();
+        Application.Current.MainPage = new MainPageOperador();
+
+
     }
 }
