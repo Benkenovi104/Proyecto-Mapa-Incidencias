@@ -112,7 +112,7 @@ public partial class BuscarPage : ContentPage
         }
 
         resultados.Clear();
-        string filtro = pickerFiltro.SelectedItem.ToString();
+        string filtro = pickerFiltro.SelectedItem.ToString()!;
 
         try
         {
@@ -120,7 +120,7 @@ public partial class BuscarPage : ContentPage
 
             if (filtro == "Categoría" && FiltroContainer.Content is Picker pickerCategoria && pickerCategoria.SelectedIndex >= 0)
             {
-                string categoriaNombre = pickerCategoria.SelectedItem.ToString();
+                string categoriaNombre = pickerCategoria.SelectedItem.ToString()!;
                 var categoria = categorias.FirstOrDefault(c => c.Nombre == categoriaNombre);
 
                 if (categoria != null)

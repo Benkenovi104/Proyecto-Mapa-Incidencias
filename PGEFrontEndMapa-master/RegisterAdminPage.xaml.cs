@@ -44,10 +44,11 @@ public partial class AgregarOperadorPage : ContentPage
         }
     }
 
-    private async void OnVolverClicked(object sender, EventArgs e)
+    private void OnVolverClicked(object sender, EventArgs e)
     {
-        Application.Current.MainPage = new MainPageOperador();
-
-
+        if (Application.Current != null)
+        {
+            Application.Current.MainPage = new MainPageOperador();
+        }
     }
 }
