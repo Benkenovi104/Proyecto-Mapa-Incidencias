@@ -669,4 +669,47 @@ app.MapPost("/auth/register-admin", async ([FromBody] RegisterDto dto, AppDb db)
     });
 });
 
+/* ---------- BUSCAR USUARIOS ---------- */
+app.MapGet("/users/search", async (
+    [FromQuery] string? criterio,
+    [FromQuery] string? valor,
+    AppDb db) =>
+{
+    if (string.IsNullOrWhiteSpace(criterio) || string.IsNullOrWhiteSpace(valor))
+    {
+        return Results.BadRequest("Criterio y valor son obligatorios");
+    }
+
+    var query = db.Usuarios
+        .Include(u => u.Rol)
+        .AsQueryable();
+
+    // Aplicar filtro según el criterio
+    var valorLower = valor.ToLower();
+    var usuariosFiltrados = criterio.ToLower() switch
+    {
+        "nombre" => query.Where(u =>
+            (u.Nombre + " " + u.Apellido).ToLower().Contains(valorLower) ||
+            u.Nombre.ToLower().Contains(valorLower) ||
+            u.Apellido.ToLower().Contains(valorLower)),
+        "email" => query.Where(u => u.Email.ToLower().Contains(valorLower)),
+        "usuario" => query.Where(u => u.Username.ToLower().Contains(valorLower)),
+        _ => query.Where(u => false) // Criterio no válido
+    };
+
+    var resultados = await usuariosFiltrados
+        .Select(u => new
+        {
+            u.Id,
+            Nombre = u.Nombre + " " + u.Apellido,
+            u.Email,
+            u.Username,
+            Rol = u.Rol.Nombre
+        })
+        .ToListAsync();
+
+    return Results.Ok(resultados);
+});
+
+
 app.Run();
