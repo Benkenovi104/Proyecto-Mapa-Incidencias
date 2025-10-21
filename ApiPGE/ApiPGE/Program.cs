@@ -93,7 +93,34 @@ app.MapPost("/incidents", async ([FromBody] CreateIncidentDto dto, AppDb db) =>
     return Results.Created($"/incidents/{inc.Id}", new { inc.Id });
 });
 
-// Obtener por bbox (ACTUALIZADO)
+// Modificar el endpoint /incidents/near para excluir estado "cerrada" (ID 4)
+app.MapGet("/incidents/near", async (double lat, double lon, double radius, int? limit, AppDb db) =>
+{
+    var gf = NtsGeometryServices.Instance.CreateGeometryFactory(srid: 4326);
+    var p = gf.CreatePoint(new Coordinate(lon, lat));
+
+    var query = db.Incidencias
+        .Include(i => i.Estado)
+        .Include(i => i.Categoria)
+        .Where(i => i.Ubicacion.IsWithinDistance(p, radius) && i.EstadoId != 4) // ← EXCLUIR CERRADAS
+        .OrderByDescending(i => i.Timestamp)
+        .Select(i => new IncidentVm
+        {
+            Id = i.Id,
+            CategoriaId = i.Categoria_Id,
+            Descripcion = i.Descripcion!,
+            FotoUrl = i.Foto_Url,
+            Estado = i.Estado.Nombre,
+            Lat = i.Ubicacion.Y,
+            Lon = i.Ubicacion.X,
+            Timestamp = i.Timestamp,
+            IconoUrl = i.Categoria.IconoUrl
+        });
+
+    return await query.Take(limit ?? 200).ToListAsync();
+});
+
+// También modificar el endpoint /incidents (bbox) para excluir cerradas
 app.MapGet("/incidents", async (
     double minLon, double minLat, double maxLon, double maxLat, int? limit, AppDb db) =>
 {
@@ -103,8 +130,8 @@ app.MapGet("/incidents", async (
 
     var query = db.Incidencias
         .Include(i => i.Estado)
-        .Include(i => i.Categoria) // ← INCLUIR CATEGORÍA
-        .Where(i => i.Ubicacion != null && i.Ubicacion.Intersects(box))
+        .Include(i => i.Categoria)
+        .Where(i => i.Ubicacion != null && i.Ubicacion.Intersects(box) && i.EstadoId != 4) // ← EXCLUIR CERRADAS
         .OrderByDescending(i => i.Timestamp)
         .Select(i => new IncidentVm
         {
@@ -116,37 +143,10 @@ app.MapGet("/incidents", async (
             Lat = i.Ubicacion.Y,
             Lon = i.Ubicacion.X,
             Timestamp = i.Timestamp,
-            IconoUrl = i.Categoria.IconoUrl // ← NUEVO: incluir el icono
+            IconoUrl = i.Categoria.IconoUrl
         });
 
     return await query.Take(limit ?? 500).ToListAsync();
-});
-
-// Obtener por radio (ACTUALIZADO)
-app.MapGet("/incidents/near", async (double lat, double lon, double radius, int? limit, AppDb db) =>
-{
-    var gf = NtsGeometryServices.Instance.CreateGeometryFactory(srid: 4326);
-    var p = gf.CreatePoint(new Coordinate(lon, lat));
-
-    var query = db.Incidencias
-        .Include(i => i.Estado)
-        .Include(i => i.Categoria) // ← INCLUIR CATEGORÍA
-        .Where(i => i.Ubicacion.IsWithinDistance(p, radius))
-        .OrderByDescending(i => i.Timestamp)
-        .Select(i => new IncidentVm
-        {
-            Id = i.Id,
-            CategoriaId = i.Categoria_Id,
-            Descripcion = i.Descripcion!,
-            FotoUrl = i.Foto_Url,
-            Estado = i.Estado.Nombre,
-            Lat = i.Ubicacion.Y,
-            Lon = i.Ubicacion.X,
-            Timestamp = i.Timestamp,
-            IconoUrl = i.Categoria.IconoUrl // ← NUEVO: incluir el icono
-        });
-
-    return await query.Take(limit ?? 200).ToListAsync();
 });
 
 // Detalle de incidencia específica
@@ -710,6 +710,77 @@ app.MapGet("/users/search", async (
 
     return Results.Ok(resultados);
 });
+
+// ======================
+// 📋 PANEL DE ADMINISTRACIÓN - TODAS LAS INCIDENCIAS CON PAGINACIÓN
+// ======================
+
+// Endpoint específico para el panel de administración (con paginación)
+app.MapGet("/incidents/all", async (int? page, int? pageSize, AppDb db) =>
+{
+    const int defaultPageSize = 10;
+    const int maxPageSize = 50;
+
+    int currentPage = page ?? 1;
+    int size = pageSize ?? defaultPageSize;
+
+    // Limitar el tamaño de página para evitar sobrecarga
+    size = Math.Min(size, maxPageSize);
+
+    // Calcular el skip
+    int skip = (currentPage - 1) * size;
+
+    var query = db.Incidencias
+        .Include(i => i.Estado)
+        .Include(i => i.Categoria)
+        .Include(i => i.Usuario)
+        .OrderByDescending(i => i.Timestamp);
+
+    // Obtener el total de incidencias
+    var totalCount = await query.CountAsync();
+
+    // Obtener las incidencias paginadas
+    var incidencias = await query
+        .Skip(skip)
+        .Take(size)
+        .Select(i => new IncidentAdminDto
+        {
+            Id = i.Id,
+            UserId = i.User_Id,
+            UsuarioNombre = $"{i.Usuario.Nombre} {i.Usuario.Apellido}",
+            CategoriaId = i.Categoria_Id,
+            CategoriaNombre = i.Categoria.Nombre,
+            Descripcion = i.Descripcion!,
+            FotoUrl = i.Foto_Url ?? "",
+            EstadoId = i.EstadoId,
+            Estado = i.Estado.Nombre,
+            Lat = i.Ubicacion.Y,
+            Lon = i.Ubicacion.X,
+            Timestamp = i.Timestamp,
+            IconoUrl = i.Categoria.IconoUrl
+        })
+        .ToListAsync();
+
+    // Calcular información de paginación
+    var totalPages = (int)Math.Ceiling(totalCount / (double)size);
+    var hasNextPage = currentPage < totalPages;
+    var hasPreviousPage = currentPage > 1;
+
+    return Results.Ok(new
+    {
+        Incidencias = incidencias,
+        Pagination = new
+        {
+            CurrentPage = currentPage,
+            PageSize = size,
+            TotalCount = totalCount,
+            TotalPages = totalPages,
+            HasNextPage = hasNextPage,
+            HasPreviousPage = hasPreviousPage
+        }
+    });
+});
+
 
 
 app.Run();

@@ -3,22 +3,37 @@
     public class IncidenciaDto
     {
         public int Id { get; set; }
-        public string Descripcion { get; set; } = string.Empty; // ← CAMBIAR de Titulo a Descripcion
-        public double Lat { get; set; } // ← CAMBIAR de Latitud a Lat
-        public double Lon { get; set; } // ← CAMBIAR de Longitud a Lon
+        public int UserId { get; set; }
+        public string UsuarioNombre { get; set; } = string.Empty; // ← NUEVA propiedad
         public int CategoriaId { get; set; }
-        public string Estado { get; set; } = string.Empty;
+        public string CategoriaNombre { get; set; } = string.Empty;
+        public string Descripcion { get; set; } = string.Empty;
         public string? FotoUrl { get; set; }
+        public int EstadoId { get; set; }  // ← Mantener como int
+        public string Estado { get; set; } = string.Empty; // ← También mantener como string
+        public double Lat { get; set; }
+        public double Lon { get; set; }
         public DateTimeOffset Timestamp { get; set; }
         public string? IconoUrl { get; set; }
 
-        // Propiedades para display
-        public string CategoriaNombre { get; set; } = string.Empty;
+        // Propiedades computadas
         public DateTime Fecha => Timestamp.DateTime;
+        public string Titulo => Descripcion;
 
-        // Propiedad computada para compatibilidad (opcional)
-        public string Titulo => Descripcion; // ← Para mantener compatibilidad
-        public double Latitud => Lat;        // ← Para mantener compatibilidad  
-        public double Longitud => Lon;       // ← Para mantener compatibilidad
+        // Propiedad para colores según el estado
+        public string EstadoColor
+        {
+            get
+            {
+                return Estado?.ToLower() switch
+                {
+                    "nueva" => "#28a745",        // Verde
+                    "en_proceso" => "#ffc107",   // Amarillo  
+                    "resuelta" => "#17a2b8",     // Azul
+                    "cerrada" => "#6c757d",      // Gris
+                    _ => "#6c757d"               // Gris por defecto
+                };
+            }
+        }
     }
 }

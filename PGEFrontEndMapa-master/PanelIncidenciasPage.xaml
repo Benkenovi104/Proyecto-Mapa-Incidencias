@@ -1,134 +1,315 @@
+<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="IntegrarMapa.PanelIncidenciasPage"
-             Title="Operador municipal">
+             Title="Panel de Incidencias">
 
     <ScrollView>
-        <VerticalStackLayout Padding="15" Spacing="15">
+        <VerticalStackLayout Padding="20" Spacing="20">
 
-            <!-- 🔹 Título principal -->
-            <Label Text="Operador municipal"
-                   FontSize="22"
-                   FontAttributes="Bold"
-                   HorizontalOptions="Center"
-                   TextColor="Black" />
-
-            <!-- 🔹 Sección: Últimas incidencias -->
-            <Button Text="Últimas incidencias"
-                    BackgroundColor="Transparent"
-                    TextColor="#E53935"
-                    BorderColor="#E53935"
-                    BorderWidth="1"
-                    CornerRadius="8"
-                    WidthRequest="220"
-                    HorizontalOptions="Center" />
-
-            <!-- 🧾 Tabla de incidencias -->
-            <Grid ColumnDefinitions="Auto,*,Auto,Auto" Padding="5,0">
-                <Label Text="Fecha" FontAttributes="Bold" />
-                <Label Text="Usuario" FontAttributes="Bold" Grid.Column="1" />
-                <Label Text="Estado" FontAttributes="Bold" Grid.Column="2" />
-                <Label Text="Acciones" FontAttributes="Bold" Grid.Column="3" />
+            <!-- ENCABEZADO -->
+            <Grid ColumnDefinitions="*, Auto">
+                <Label Grid.Column="0"
+                       Text="Panel de Incidencias"
+                       FontSize="28"
+                       FontAttributes="Bold"
+                       TextColor="#1a1a1a"
+                       VerticalOptions="Center" />
+                <Button Grid.Column="1"
+                        Text="⟳"
+                        FontSize="20"
+                        BackgroundColor="#007bff"
+                        TextColor="White"
+                        CornerRadius="20"
+                        WidthRequest="40"
+                        HeightRequest="40"
+                        Clicked="OnRefrescarClicked" />
             </Grid>
 
-            <CollectionView x:Name="TablaIncidencias">
-                <CollectionView.ItemTemplate>
-                    <DataTemplate>
-                        <Grid ColumnDefinitions="Auto,*,Auto,Auto" Padding="5">
-                            <Label Text="{Binding Fecha}" Grid.Column="0" />
-                            <Label Text="{Binding Usuario}" Grid.Column="1" />
-                            <Label Text="{Binding Estado}" Grid.Column="2" />
+            <!-- SECCIÓN DE BÚSQUEDA MEJORADA -->
+            <Frame BackgroundColor="White"
+                   BorderColor="#e0e0e0"
+                   CornerRadius="16"
+                   HasShadow="True"
+                   Padding="20">
+                <VerticalStackLayout Spacing="20">
+                    <Label Text="Buscar incidencias"
+                           FontSize="20"
+                           FontAttributes="Bold"
+                           TextColor="#222" />
 
-                            <HorizontalStackLayout Grid.Column="3" Spacing="8">
-                                <Button Text="🗑️"
-                                        BackgroundColor="Transparent"
-                                        Clicked="OnEliminarClicked" />
-                                <Button Text="✏️"
-                                        BackgroundColor="Transparent"
-                                        Clicked="OnEditarClicked" />
-                            </HorizontalStackLayout>
-                        </Grid>
-                    </DataTemplate>
-                </CollectionView.ItemTemplate>
-            </CollectionView>
+                    <!-- PRIMERA FILA DE FILTROS -->
+                    <Grid ColumnDefinitions="*, *"
+                          ColumnSpacing="15">
 
-            <!-- 🔍 Sección búsqueda -->
-            <Button Text="Buscar incidencias"
-                    BackgroundColor="Transparent"
-                    TextColor="#E53935"
-                    BorderColor="#E53935"
-                    BorderWidth="1"
-                    CornerRadius="8"
-                    WidthRequest="220"
-                    HorizontalOptions="Center"
-                    Margin="0,10,0,0" />
+                        <!-- Filtro Categoría -->
+                        <VerticalStackLayout Spacing="5" Grid.Column="0">
+                            <Label Text="Por categoría:" FontAttributes="Bold" TextColor="#555" />
+                            <Picker x:Name="FiltroCategoria"
+                                    Title="Todas las categorías..."
+                                    BackgroundColor="#f0f2f5"
+                                    TextColor="#222"
+                                    HeightRequest="70" />
+                        </VerticalStackLayout>
 
-            <Grid ColumnDefinitions="*,*" RowDefinitions="Auto" ColumnSpacing="10">
-                <VerticalStackLayout Grid.Column="0">
-                    <Label Text="Por usuario:" FontAttributes="Bold" />
-                    <Entry x:Name="FiltroUsuario" Placeholder="Nombre..." />
+                        <!-- Filtro Estado -->
+                        <VerticalStackLayout Spacing="5" Grid.Column="1">
+                            <Label Text="Por estado:" FontAttributes="Bold" TextColor="#555" />
+                            <Picker x:Name="FiltroEstado"
+                                    Title="Todos los estados..."
+                                    BackgroundColor="#f0f2f5"
+                                    TextColor="#222"
+                                    HeightRequest="70" />
+                        </VerticalStackLayout>
+                    </Grid>
+
+                    <!-- SEGUNDA FILA DE FILTROS -->
+                    <Grid ColumnDefinitions="*, *"
+                          ColumnSpacing="15">
+
+                        <!-- Filtro Usuario -->
+                        <VerticalStackLayout Spacing="5" Grid.Column="0">
+                            <Label Text="Por usuario:" FontAttributes="Bold" TextColor="#555" />
+                            <Entry x:Name="FiltroUsuario"
+                                   Placeholder="Nombre de usuario..."
+                                   PlaceholderColor="#999"
+                                   BackgroundColor="#f0f2f5"
+                                   TextColor="#222"
+                                   HeightRequest="45" />
+                        </VerticalStackLayout>
+
+                        <!-- Filtro Fecha -->
+                        <VerticalStackLayout Spacing="5" Grid.Column="1">
+                            <Label Text="Por fecha:" FontAttributes="Bold" TextColor="#555" />
+                            <Picker x:Name="FiltroFecha"
+                                    Title="Rango de fechas..."
+                                    BackgroundColor="#f0f2f5"
+                                    TextColor="#222"
+                                    HeightRequest="70">
+                                <Picker.ItemsSource>
+                                    <x:Array Type="{x:Type x:String}">
+                                        <x:String>Todas las fechas</x:String>
+                                        <x:String>Últimas 24 horas</x:String>
+                                        <x:String>Última semana</x:String>
+                                        <x:String>Último mes</x:String>
+                                    </x:Array>
+                                </Picker.ItemsSource>
+                            </Picker>
+                        </VerticalStackLayout>
+                    </Grid>
+
+                    <!-- BOTONES -->
+                    <Grid ColumnDefinitions="*, *" ColumnSpacing="15">
+                        <Button Grid.Column="0"
+                                Text="Buscar"
+                                BackgroundColor="#007bff"
+                                TextColor="White"
+                                FontAttributes="Bold"
+                                CornerRadius="10"
+                                HeightRequest="45"
+                                Clicked="OnBuscarClicked" />
+
+                        <Button Grid.Column="1"
+                                Text="Limpiar"
+                                BackgroundColor="#adb5bd"
+                                TextColor="White"
+                                FontAttributes="Bold"
+                                CornerRadius="10"
+                                HeightRequest="45"
+                                Clicked="OnLimpiarFiltrosClicked" />
+                    </Grid>
                 </VerticalStackLayout>
+            </Frame>
 
-                <VerticalStackLayout Grid.Column="1">
-                    <Label Text="Por estado:" FontAttributes="Bold" />
-                    <Picker x:Name="FiltroEstado">
-                        <Picker.Items>
-                            <x:String>Todos</x:String>
-                            <x:String>Aprobado</x:String>
-                            <x:String>Pendiente</x:String>
-                            <x:String>Denegado</x:String>
-                        </Picker.Items>
-                    </Picker>
+            <!-- RESULTADOS DE BÚSQUEDA -->
+            <Frame x:Name="ResultadosView"
+                   IsVisible="False"
+                   BackgroundColor="White"
+                   BorderColor="#e0e0e0"
+                   CornerRadius="16"
+                   HasShadow="True"
+                   Padding="20">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Resultados de la búsqueda:"
+                           FontSize="18"
+                           FontAttributes="Bold"
+                           TextColor="#333" />
+                    <CollectionView x:Name="ResultadosCollection">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Frame BackgroundColor="#f8f9fa"
+                                       CornerRadius="12"
+                                       Padding="15"
+                                       Margin="0,5">
+                                    <Grid ColumnDefinitions="*, Auto, Auto" ColumnSpacing="10">
+                                        <VerticalStackLayout Grid.Column="0" Spacing="4">
+                                            <Label Text="{Binding CategoriaNombre}"
+                                                   FontAttributes="Bold"
+                                                   TextColor="#222"
+                                                   FontSize="14" />
+                                            <Label Text="{Binding Descripcion}"
+                                                   FontSize="13"
+                                                   TextColor="#555"
+                                                   MaxLines="2" />
+                                            <Grid ColumnDefinitions="*, *">
+                                                <Label Grid.Column="0"
+                                                       Text="{Binding Fecha, StringFormat='{0:dd/MM/yyyy HH:mm}'}"
+                                                       FontSize="11"
+                                                       TextColor="#777" />
+                                                <Label Grid.Column="1"
+                                                       Text="{Binding UsuarioNombre}"
+                                                       FontSize="11"
+                                                       TextColor="#999"
+                                                       HorizontalOptions="End" />
+                                            </Grid>
+                                        </VerticalStackLayout>
+
+                                        <Label Grid.Column="1"
+                                               Text="{Binding Estado}"
+                                               Padding="12,6"
+                                               FontSize="12"
+                                               FontAttributes="Bold"
+                                               TextColor="White"
+                                               BackgroundColor="{Binding EstadoColor}"
+                                               VerticalOptions="Center"
+                                               HorizontalTextAlignment="Center" />
+
+                                        <Button Grid.Column="2"
+                                                Text="Editar"
+                                                BackgroundColor="#17a2b8"
+                                                TextColor="White"
+                                                FontSize="12"
+                                                FontAttributes="Bold"
+                                                CornerRadius="8"
+                                                Padding="15,8"
+                                                Clicked="OnEditarClicked" />
+                                    </Grid>
+                                </Frame>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
                 </VerticalStackLayout>
-            </Grid>
+            </Frame>
 
-            <Button Text="Buscar"
-                    BackgroundColor="#E53935"
+            <!-- TODAS LAS INCIDENCIAS -->
+            <Frame BackgroundColor="White"
+                   BorderColor="#e0e0e0"
+                   CornerRadius="16"
+                   HasShadow="True"
+                   Padding="20">
+                <VerticalStackLayout Spacing="15">
+                    <Label Text="Todas las Incidencias"
+                           FontSize="20"
+                           FontAttributes="Bold"
+                           TextColor="#222" />
+
+                    <!-- INFORMACIÓN DE PAGINACIÓN -->
+                    <Label x:Name="LblPaginacion"
+                           FontSize="14"
+                           TextColor="#666"
+                           HorizontalOptions="Center"
+                           IsVisible="False" />
+
+                    <Label x:Name="LblResultado"
+                           FontSize="14"
+                           TextColor="#666"
+                           IsVisible="False" />
+
+                    <CollectionView x:Name="TablaIncidencias">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Frame BackgroundColor="#f8f9fa"
+                                       CornerRadius="12"
+                                       Padding="15"
+                                       Margin="0,5">
+                                    <Grid ColumnDefinitions="*, Auto, Auto, Auto" ColumnSpacing="10">
+                                        <VerticalStackLayout Grid.Column="0" Spacing="4">
+                                            <Label Text="{Binding CategoriaNombre}"
+                                                   FontAttributes="Bold"
+                                                   TextColor="#222"
+                                                   FontSize="14" />
+                                            <Label Text="{Binding Descripcion}"
+                                                   FontSize="13"
+                                                   TextColor="#555"
+                                                   MaxLines="2" />
+                                            <Grid ColumnDefinitions="*, *">
+                                                <Label Grid.Column="0"
+                                                       Text="{Binding Fecha, StringFormat='{0:dd/MM/yyyy HH:mm}'}"
+                                                       FontSize="11"
+                                                       TextColor="#777" />
+                                                <Label Grid.Column="1"
+                                                       Text="{Binding Id, StringFormat='ID: #{0}'}"
+                                                       FontSize="11"
+                                                       TextColor="#999"
+                                                       HorizontalOptions="End" />
+                                            </Grid>
+                                            <Label Text="{Binding UsuarioNombre}"
+                                                   FontSize="11"
+                                                   TextColor="#666"
+                                                   FontAttributes="Italic" />
+                                        </VerticalStackLayout>
+
+                                        <Label Grid.Column="1"
+                                               Text="{Binding Estado}"
+                                               Padding="12,6"
+                                               FontSize="12"
+                                               FontAttributes="Bold"
+                                               TextColor="White"
+                                               BackgroundColor="{Binding EstadoColor}"
+                                               VerticalOptions="Center"
+                                               HorizontalTextAlignment="Center" />
+
+                                        <Button Grid.Column="2"
+                                                Text="Editar"
+                                                BackgroundColor="#17a2b8"
+                                                TextColor="White"
+                                                FontSize="12"
+                                                FontAttributes="Bold"
+                                                CornerRadius="8"
+                                                Padding="15,8"
+                                                Clicked="OnEditarClicked" />
+
+                                        <Button Grid.Column="3"
+                                                Text="Eliminar"
+                                                BackgroundColor="#dc3545"
+                                                TextColor="White"
+                                                FontSize="12"
+                                                FontAttributes="Bold"
+                                                CornerRadius="8"
+                                                Padding="15,8"
+                                                Clicked="OnEliminarClicked" />
+                                    </Grid>
+                                </Frame>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+
+                    <!-- BOTÓN DE CARGAR MÁS -->
+                    <Button x:Name="BtnCargarMas"
+                            Text="Cargar 10 incidencias más"
+                            BackgroundColor="#28a745"
+                            TextColor="White"
+                            FontAttributes="Bold"
+                            CornerRadius="10"
+                            HeightRequest="45"
+                            Clicked="OnCargarMasClicked"
+                            IsVisible="False" />
+                </VerticalStackLayout>
+            </Frame>
+
+            <!-- LOADING + VOLVER -->
+            <ActivityIndicator x:Name="loadingIndicator"
+                               IsVisible="False"
+                               IsRunning="False"
+                               Color="#007bff"
+                               VerticalOptions="Center" />
+            <Button Text="Volver"
+                    Clicked="OnVolverClicked"
+                    BackgroundColor="#6c757d"
                     TextColor="White"
                     CornerRadius="10"
-                    Clicked="OnBuscarClicked" />
-
-            <!-- 🔸 Resultados -->
-            <Label x:Name="LblResultado" 
-                   Text=""
-                   FontAttributes="Bold"
-                   TextColor="#E53935"
-                   IsVisible="False" />
-
-            <CollectionView x:Name="ResultadosView" IsVisible="False">
-                <CollectionView.Header>
-                    <Grid ColumnDefinitions="Auto,*,Auto,Auto" Padding="5,0">
-                        <Label Text="Fecha" FontAttributes="Bold" />
-                        <Label Text="Usuario" FontAttributes="Bold" Grid.Column="1" />
-                        <Label Text="Estado" FontAttributes="Bold" Grid.Column="2" />
-                        <Label Text="Acciones" FontAttributes="Bold" Grid.Column="3" />
-                    </Grid>
-                </CollectionView.Header>
-
-                <CollectionView.ItemTemplate>
-                    <DataTemplate>
-                        <Grid ColumnDefinitions="Auto,*,Auto,Auto" Padding="5">
-                            <Label Text="{Binding Fecha}" Grid.Column="0" />
-                            <Label Text="{Binding Usuario}" Grid.Column="1" />
-                            <Label Text="{Binding Estado}" Grid.Column="2" />
-                            <HorizontalStackLayout Grid.Column="3" Spacing="8">
-                                <Button Text="🗑️"
-                                        BackgroundColor="Transparent"
-                                        Clicked="OnEliminarClicked" />
-                                <Button Text="✏️"
-                                        BackgroundColor="Transparent"
-                                        Clicked="OnEditarClicked" />
-                            </HorizontalStackLayout>
-                        </Grid>
-                    </DataTemplate>
-                </CollectionView.ItemTemplate>
-            </CollectionView>
-            <Button Text="⬅ Volver"
-                BackgroundColor="#E53935"
-                TextColor="White"
-                CornerRadius="10"
-                Margin="0,10,0,20"
-                Clicked="OnVolverClicked"/>
+                    HeightRequest="45"
+                    FontAttributes="Bold" />
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

@@ -3,6 +3,7 @@ using IntegrarMapa.Models;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Maui.Controls;
 
 namespace IntegrarMapa.Services;
 
@@ -192,6 +193,90 @@ public class ApiService
     }
 
     // ======================
+    // 📋 PANEL DE INCIDENCIAS - CON PAGINACIÓN
+    // ======================
+
+    public async Task<(List<IncidenciaDto> Incidencias, PaginationInfo Pagination)> ObtenerIncidenciasAsync(int page = 1, int pageSize = 10)
+    {
+        try
+        {
+            var response = await _http.GetAsync($"/incidents/all?page={page}&pageSize={pageSize}");
+            Console.WriteLine($"🔍 Llamando a: /incidents/all?page={page}&pageSize={pageSize}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"✅ Respuesta paginada recibida");
+
+                // Deserializar la respuesta que ahora incluye paginación
+                var result = await response.Content.ReadFromJsonAsync<PagedResponse<IncidenciaDto>>();
+
+                if (result != null)
+                {
+                    Console.WriteLine($"✅ {result.Incidencias?.Count ?? 0} incidencias en página {result.Pagination?.CurrentPage ?? 1}");
+                    return (result.Incidencias ?? new List<IncidenciaDto>(), result.Pagination ?? new PaginationInfo());
+                }
+            }
+            else
+            {
+                Console.WriteLine($"❌ Error en /incidents/all: {response.StatusCode}");
+            }
+
+            return (new List<IncidenciaDto>(), new PaginationInfo());
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Excepción en ObtenerIncidenciasAsync: {ex.Message}");
+            return (new List<IncidenciaDto>(), new PaginationInfo());
+        }
+    }
+
+    public async Task<bool> ActualizarIncidenciaAsync(int id, string nuevoEstado)
+    {
+        try
+        {
+            // Convertir el estado de texto a ID numérico según tu tabla de estados
+            int estadoId = nuevoEstado switch
+            {
+                "nueva" => 1,
+                "en_proceso" => 2,
+                "resuelta" => 3,
+                "cerrada" => 4,
+                _ => 1
+            };
+
+            // Enviar solo el estadoId como número, no como objeto
+            var response = await _http.PatchAsJsonAsync($"/incidents/{id}/status", estadoId);
+
+            Console.WriteLine($"📤 Actualizando incidencia {id} a estado_id: {estadoId}");
+            Console.WriteLine($"📥 Respuesta: {response.StatusCode}");
+
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error al actualizar incidencia: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<bool> EliminarIncidenciaAsync(int id)
+    {
+        try
+        {
+            var response = await _http.DeleteAsync($"/incidents/{id}");
+            Console.WriteLine($"🗑️ Eliminando incidencia {id}, respuesta: {response.StatusCode}");
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error al eliminar incidencia: {ex.Message}");
+            return false;
+        }
+    }
+
+
+    // ======================
     // 🆕 Crear nuevo operador (administrador)
     // ======================
     public async Task<bool> RegisterWithRoleAsync(string nombre, string apellido, string email, string username, string password, string rol)
@@ -376,4 +461,27 @@ public class ApiService
             return false;
         }
     }
+
+    // ======================
+    // 🗂️ MÉTODOS ADICIONALES PARA FILTROS
+    // ======================
+
+    public async Task<List<CategoriaDto>> ObtenerCategoriasAsync()
+    {
+        try
+        {
+            var response = await _http.GetAsync("/categories");
+            response.EnsureSuccessStatusCode();
+            var categorias = await response.Content.ReadFromJsonAsync<List<CategoriaDto>>();
+            return categorias ?? new List<CategoriaDto>();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al obtener categorías: {ex.Message}");
+            return new List<CategoriaDto>();
+        }
+    }
+
+    
+
 }
