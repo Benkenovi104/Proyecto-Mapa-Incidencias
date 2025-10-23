@@ -1,4 +1,5 @@
-﻿<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:mapsui="clr-namespace:Mapsui.UI.Maui;assembly=Mapsui.UI.Maui"
              x:Class="IntegrarMapa.MainPage">
@@ -7,22 +8,104 @@
 
         <!-- 🌍 Mapa base -->
         <mapsui:MapControl x:Name="mapControl"
-                           AbsoluteLayout.LayoutFlags="All"
-                           AbsoluteLayout.LayoutBounds="0,0,1,1" />
+                       AbsoluteLayout.LayoutFlags="All"
+                       AbsoluteLayout.LayoutBounds="0,0,1,1" />
 
         <!-- 📋 Panel lateral derecho -->
-        <Frame AbsoluteLayout.LayoutFlags="PositionProportional"
-               AbsoluteLayout.LayoutBounds="1,0.5,260,500"
-               BackgroundColor="#CCFFFFFF"
-               CornerRadius="20"
-               HasShadow="True"
-               Padding="15">
-
+        <Frame x:Name="MenuContainer"
+       AbsoluteLayout.LayoutFlags="All"
+       AbsoluteLayout.LayoutBounds="1,0.5,0.32,0.9"
+       BackgroundColor="#CCFFFFFF"
+       CornerRadius="20"
+       HasShadow="True"
+       Padding="15"
+       VerticalOptions="Center"
+       HorizontalOptions="End">
             <ScrollView>
-                <ContentView x:Name="MenuContainer" />
-            </ScrollView>
+                <VerticalStackLayout Spacing="12">
 
+                    <Label Text="Panel de Control"
+                   FontAttributes="Bold"
+                   FontSize="20"
+                   TextColor="#222"
+                   HorizontalOptions="Center" />
+
+                    <BoxView HeightRequest="1"
+                     Color="#DDD"
+                     HorizontalOptions="Fill" />
+
+                    <!-- Botones principales -->
+                    <VerticalStackLayout Spacing="10">
+                        <Button Text="📍 Nueva incidencia"
+        BackgroundColor="#0078D7"
+        TextColor="White"
+        CornerRadius="10"
+        HeightRequest="45"
+        Clicked="OnAgregarIncidenciaClicked" />
+
+                        <Button Text="🔍 Buscar incidencias"
+        BackgroundColor="#00B294"
+        TextColor="White"
+        CornerRadius="10"
+        HeightRequest="45"
+        Clicked="OnBuscarIncidenciaClicked" />
+
+                        <Button Text="📊 Panel general"
+        BackgroundColor="#FFB900"
+        TextColor="White"
+        CornerRadius="10"
+        HeightRequest="45"
+        Clicked="OnIrPerfilClicked" />
+
+                        <Button Text="🚪 Salir"
+        BackgroundColor="#D83B01"
+        TextColor="White"
+        CornerRadius="10"
+        HeightRequest="45"
+        Clicked="OnSalirClicked" />
+
+                    </VerticalStackLayout>
+
+                </VerticalStackLayout>
+            </ScrollView>
+        </Frame>
+
+
+
+
+        <!-- 🎯 CONTROLES DE ZOOM (ahora sobre el menú) -->
+        <Frame AbsoluteLayout.LayoutFlags="PositionProportional"
+           AbsoluteLayout.LayoutBounds="0.88,0.1,60,120"
+           BackgroundColor="White"
+           CornerRadius="10"
+           HasShadow="True"
+           Padding="5"
+           ZIndex="10">
+            <VerticalStackLayout Spacing="5">
+                <Button x:Name="btnZoomIn"
+                    Text="➕"
+                    FontSize="20"
+                    WidthRequest="50"
+                    HeightRequest="50"
+                    BackgroundColor="Transparent"
+                    TextColor="Black"
+                    CornerRadius="25"
+                    Clicked="OnZoomInClicked" />
+                <BoxView HeightRequest="1"
+                     Color="LightGray"
+                     HorizontalOptions="Fill" />
+                <Button x:Name="btnZoomOut"
+                    Text="➖"
+                    FontSize="20"
+                    WidthRequest="50"
+                    HeightRequest="50"
+                    BackgroundColor="Transparent"
+                    TextColor="Black"
+                    CornerRadius="25"
+                    Clicked="OnZoomOutClicked" />
+            </VerticalStackLayout>
         </Frame>
 
     </AbsoluteLayout>
+
 </ContentPage>

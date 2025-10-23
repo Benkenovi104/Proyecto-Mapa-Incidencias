@@ -12,29 +12,24 @@ using Color = Mapsui.Styles.Color;
 using IntegrarMapa.Models;
 using IntegrarMapa.Services;
 using IntegrarMapa.Helpers;
-
-
+using Microsoft.Maui.Graphics;
+#nullable disable
 namespace IntegrarMapa;
 
 public partial class MainPage : ContentPage
 {
     private bool modoAgregar = false;
     private readonly MemoryLayer pinLayer;
-
-    public MainPage(MemoryLayer pinLayer) => this.pinLayer = pinLayer;
-
-    private readonly ObservableCollection<Incidencia> incidencias;
-    private readonly int tipoUsuario; // 1 = cliente, 2 = operador
-    private readonly ApiService _apiService = new(); // ✅ Agregado
-
+    private readonly ObservableCollection<Incidencia> incidencias = [];
+    private readonly int tipoUsuario;
+    private readonly ApiService _apiService = new();
 
     public MainPage(int tipoUsuario = 2)
     {
         InitializeComponent();
         this.tipoUsuario = tipoUsuario;
 
-        incidencias = [];
-
+        // 🔥 CORREGIDO: Usar Mapsui.Map explícitamente
         var map = new Mapsui.Map();
         map.Layers.Add(OpenStreetMap.CreateTileLayer());
 
@@ -47,49 +42,78 @@ public partial class MainPage : ContentPage
         };
         map.Layers.Add(pinLayer);
 
-        // Vista inicial → Cordoba
+        // Configuración de controles táctiles
+        mapControl.UseDoubleTap = true;
+        mapControl.UseFling = true;
+
+        // Alternativa: usar ZoomLevel en lugar de ZoomTo
         var (x, y) = SphericalMercator.FromLonLat(-64.1888, -31.4201);
-        var center = new MPoint(x, y);
-        map.Home = n => n.CenterOn(center);
+        map.Home = n => n.CenterOnAndZoomTo(new MPoint(x, y), n.Resolutions[10]); // Nivel 10 para vista de ciudad
+
+        map.Navigator.ZoomTo(5000); // 🔥 ZOOM MUCHO MÁS ALEJADO para ver el mundo
 
         mapControl.Map = map;
-
-        // ✅ CAMBIO: Usar OnMapTapped en lugar de OnMapInfo
         mapControl.Info += OnMapTapped;
 
         // Cargar el menú inicial
         MenuContainer.Content = CrearVistaMenu();
+
+        Console.WriteLine("🗺️ Mapa inicializado - Vista Mundial");
     }
 
-    // ✅ Se ejecuta cuando la página aparece
+    // 🎯 MÉTODOS PARA ZOOM MANUAL
+    private void OnZoomInClicked(object sender, EventArgs e)
+    {
+        try
+        {
+            mapControl.Map.Navigator.ZoomIn(300);
+            mapControl.Refresh();
+            Console.WriteLine("🔍 Zoom In (acercar)");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error en Zoom In: {ex.Message}");
+        }
+    }
+
+    private void OnZoomOutClicked(object sender, EventArgs e)
+    {
+        try
+        {
+            mapControl.Map.Navigator.ZoomOut(300);
+            mapControl.Refresh();
+            Console.WriteLine("🔍 Zoom Out (alejar)");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error en Zoom Out: {ex.Message}");
+        }
+    }
+
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        await CargarIncidenciasAsync(); // ← carga las incidencias en el mapa
+        await CargarIncidenciasAsync();
     }
 
-    // ✅ NUEVO MÉTODO: Manejar clicks en el mapa (íconos y mapa vacío)
-    private async void OnMapTapped(object? sender, MapInfoEventArgs e)
+    // 🔥 CORREGIDO: Remover nullable del sender
+    private async void OnMapTapped(object sender, MapInfoEventArgs e)
     {
-        // ✅ 1. Si se tocó un ícono/feature
         if (e.MapInfo?.Feature is PointFeature pointFeature)
         {
-            // Obtener los datos de la incidencia desde el feature
             var descripcion = pointFeature["Descripcion"]?.ToString() ?? "Sin descripción";
-            _ = pointFeature["CategoriaId"]?.ToString() ?? "0";
             var estado = pointFeature["Estado"]?.ToString() ?? "Desconocido";
-            var iconoUrl = pointFeature["IconoUrl"]?.ToString();
+            var iconoUrl = pointFeature["IconoUrl"]?.ToString() ?? "";
+            var fotoUrl = pointFeature["FotoUrl"]?.ToString() ?? ""; // ✅ Obtener la foto real
 
-            // Obtener coordenadas
             var point = pointFeature.Point;
             var (lon, lat) = SphericalMercator.ToLonLat(point.X, point.Y);
 
             Console.WriteLine($"📍 Ícono tocado: {descripcion} en {lat}, {lon}");
 
-            // Mostrar detalles
-            await MostrarDetalleIncidenciaAsync(descripcion, estado, lat, lon, iconoUrl);
+            // ✅ CORREGIDO: Pasar fotoUrl al método
+            await MostrarDetalleIncidenciaAsync(descripcion, estado, lat, lon, iconoUrl, fotoUrl);
         }
-        // ✅ 2. Si está en modo agregar y se tocó el mapa vacío
         else if (modoAgregar && e.MapInfo?.WorldPosition is MPoint pos)
         {
             modoAgregar = false;
@@ -97,17 +121,14 @@ public partial class MainPage : ContentPage
         }
     }
 
-    // ✅ NUEVO MÉTODO: Mostrar detalles de incidencia al tocar ícono (usando DisplayAlert)
-    private async Task MostrarDetalleIncidenciaAsync(string descripcion, string estado, double lat, double lon, string? iconoUrl)
+    // 🔥 CORREGIDO: Remover nullable del parámetro
+    private async Task MostrarDetalleIncidenciaAsync(string descripcion, string estado, double lat, double lon, string iconoUrl, string fotoUrl)
     {
-        // Crear mensaje con los detalles
-        var mensaje = $"📝 {descripcion}\n\n" +
-                     $"🔄 Estado: {estado}\n" +
-                     $"📍 Coordenadas: {lat:F4}, {lon:F4}";
+        var mensaje = $"📝 {descripcion}\n\n🔄 Estado: {estado}\n📍 Coordenadas: {lat:F4}, {lon:F4}";
 
-        if (!string.IsNullOrEmpty(iconoUrl))
+        // ✅ CORREGIDO: Verificar si tiene foto real (FotoUrl) en lugar del icono
+        if (!string.IsNullOrEmpty(fotoUrl))
         {
-            // Si tiene foto, mostrar opciones
             var accion = await DisplayActionSheet(
                 "📋 Detalles de Incidencia",
                 "Cancelar",
@@ -121,7 +142,7 @@ public partial class MainPage : ContentPage
             }
             else if (accion == "📸 Ver Foto")
             {
-                await MostrarFotoCompletaAsync(iconoUrl);
+                await MostrarFotoCompletaAsync(fotoUrl);
             }
         }
         else
@@ -131,8 +152,7 @@ public partial class MainPage : ContentPage
         }
     }
 
-    // ✅ NUEVO MÉTODO: Mostrar foto completa
-    private async Task MostrarFotoCompletaAsync(string? fotoUrl)
+    private async Task MostrarFotoCompletaAsync(string fotoUrl)
     {
         if (string.IsNullOrEmpty(fotoUrl))
         {
@@ -140,61 +160,64 @@ public partial class MainPage : ContentPage
             return;
         }
 
-        // Crear una página temporal para mostrar la foto
-        var fotoPage = new ContentPage
+        try
         {
-            Title = "Foto de la Incidencia",
-            BackgroundColor = Colors.Black,
-            Content = new StackLayout
+            // ✅ CORREGIDO: Usar StackLayout en lugar de Grid para simplificar
+            var fotoPage = new ContentPage
             {
-                VerticalOptions = LayoutOptions.Center,
-                HorizontalOptions = LayoutOptions.Center,
-                Children =
+                Title = "Foto de la Incidencia",
+                BackgroundColor = Colors.Black,
+                Content = new StackLayout
                 {
+                    Spacing = 0,
+                    Children =
+                {
+                    // Imagen que ocupa la mayor parte de la pantalla
                     new Image
                     {
                         Source = ImageSource.FromUri(new Uri(fotoUrl)),
                         Aspect = Aspect.AspectFit,
-                        MaximumHeightRequest = 500,
-                        MaximumWidthRequest = 500,
-                        BackgroundColor = Colors.Black
+                        BackgroundColor = Colors.Black,
+                        HorizontalOptions = LayoutOptions.Fill,
+                        VerticalOptions = LayoutOptions.Fill
                     },
+                    // Botón cerrar en la parte inferior
                     new Button
                     {
-                        Text = "Cerrar",
-                        BackgroundColor = Colors.Red,
+                        Text = "✕ Cerrar",
+                        BackgroundColor = Microsoft.Maui.Graphics.Color.FromArgb("#CC000000"),
                         TextColor = Colors.White,
-                        HorizontalOptions = LayoutOptions.Center,
-                        CornerRadius = 8,
-                        Margin = new Thickness(0, 20, 0, 0)
-                    }
-                    .Invoke(btn => btn.Clicked += async (s, e) => await Navigation.PopModalAsync())
+                        FontSize = 16,
+                        FontAttributes = FontAttributes.Bold,
+                        CornerRadius = 20,
+                        Margin = new Thickness(20),
+                        Padding = new Thickness(20, 10),
+                        HorizontalOptions = LayoutOptions.Center
+                    }.Invoke(btn => btn.Clicked += async (s, e) => await Navigation.PopModalAsync())
                 }
-            }
-        };
+                }
+            };
 
-        await Navigation.PushModalAsync(fotoPage);
+            await Navigation.PushModalAsync(fotoPage);
+            Console.WriteLine($"📸 Mostrando foto: {fotoUrl}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Error al mostrar foto: {ex.Message}");
+            await DisplayAlert("Error", "No se pudo cargar la foto", "OK");
+        }
     }
 
-    // ✅ Método para cargar incidencias desde la API
     private async Task CargarIncidenciasAsync()
     {
         try
         {
-            // ✅ SOLUCIÓN: Recrear la capa en lugar de limpiar cache
-            var nuevaCapa = new MemoryLayer
-            {
-                Name = "Incidencias",
-                Features = [],
-                IsMapInfoLayer = true
-            };
             var lista = await _apiService.GetIncidenciasAsync();
             var features = new List<IFeature>();
 
             foreach (var item in lista)
             {
                 var (x, y) = SphericalMercator.FromLonLat(item.Lon, item.Lat);
-
                 IStyle estilo;
 
                 if (!string.IsNullOrEmpty(item.IconoUrl))
@@ -205,15 +228,12 @@ public partial class MainPage : ContentPage
                         var bytes = await http.GetByteArrayAsync(item.IconoUrl);
                         var bitmapId = BitmapRegistry.Instance.Register(bytes);
 
-                        // ✅ FORMA CORRECTA - Tamaño fijo en Mapsui
                         estilo = new SymbolStyle
                         {
                             BitmapId = bitmapId,
-                            SymbolScale = 0.08, // ← Este es el control principal del tamaño
-                            UnitType = UnitType.Pixel, // ← Mantener en píxeles
+                            SymbolScale = 0.08,
+                            UnitType = UnitType.Pixel,
                         };
-
-                        Console.WriteLine($"✅ Icono cargado - Tamaño fijo para incidencia {item.Id}");
                     }
                     catch (Exception ex)
                     {
@@ -223,7 +243,6 @@ public partial class MainPage : ContentPage
                 }
                 else
                 {
-                    Console.WriteLine($"⚠️ No hay icono para incidencia {item.Id}");
                     estilo = CrearEstiloPorDefecto();
                 }
 
@@ -233,7 +252,8 @@ public partial class MainPage : ContentPage
                     ["CategoriaId"] = item.CategoriaId,
                     ["Estado"] = item.Estado,
                     ["IconoUrl"] = item.IconoUrl,
-                    ["Id"] = item.Id // ← Agregar ID también
+                    ["FotoUrl"] = item.FotoUrl, // ✅ NUEVO: Agregar la URL de la foto real
+                    ["Id"] = item.Id
                 };
 
                 feature.Styles.Add(estilo);
@@ -243,22 +263,20 @@ public partial class MainPage : ContentPage
             pinLayer.Features = features;
             mapControl.Refresh();
 
-            Console.WriteLine($"🗺️ Mapa actualizado con {features.Count} incidencias (tamaño fijo)");
+            Console.WriteLine($"🗺️ Mapa actualizado con {features.Count} incidencias");
         }
         catch (Exception ex)
         {
             await DisplayAlert("Error", $"No se pudieron cargar las incidencias: {ex.Message}", "OK");
         }
     }
-
     private IStyle CrearEstiloPorDefecto()
     {
-        // ✅ Tamaño fijo también para íconos por defecto
         return new SymbolStyle
         {
             Fill = new Brush(Color.Red),
             SymbolType = SymbolType.Ellipse,
-            SymbolScale = 0.15, // ← Controla el tamaño del círculo
+            SymbolScale = 0.15,
             UnitType = UnitType.Pixel,
             Line = new Pen(Color.DarkRed, 2)
         };
@@ -267,59 +285,29 @@ public partial class MainPage : ContentPage
     // =========================
     // 🚩 EVENTOS DE MENÚ
     // =========================
-    private void OnAgregarIncidenciaClicked(object? sender, EventArgs e)
+    private void OnAgregarIncidenciaClicked(object sender, EventArgs e)
     {
         modoAgregar = true;
-        MenuContainer.Content = CrearVistaIncidencias; // Cambiar a listado de incidencias
+        MenuContainer.Content = CrearVistaIncidencias;
     }
 
-    private async void OnBuscarIncidenciaClicked(object? sender, EventArgs e)
+    private async void OnBuscarIncidenciaClicked(object sender, EventArgs e)
     {
         await Navigation.PushModalAsync(new BuscarPage());
     }
 
-    private async void OnIrPerfilClicked(object? sender, EventArgs e)
+    private async void OnIrPerfilClicked(object sender, EventArgs e)
     {
         await Navigation.PushModalAsync(new PerfilPage());
     }
 
-    private async void OnIncidenciaMenuClicked(object? sender, EventArgs e)
+    private async void OnSalirClicked(object sender, EventArgs e)
     {
-        if (sender is Button btn && btn.CommandParameter is Incidencia incidencia)
-        {
-            string nuevoNombre = await DisplayPromptAsync(
-                "Editar incidencia",
-                "Nuevo nombre:",
-                initialValue: incidencia.Titulo);
-
-            if (!string.IsNullOrWhiteSpace(nuevoNombre))
-            {
-                incidencia.Titulo = nuevoNombre;
-
-                // 🔄 Forzar refresco en la lista
-                var index = incidencias.IndexOf(incidencia);
-                incidencias.RemoveAt(index);
-                incidencias.Insert(index, incidencia);
-            }
-        }
-    }
-
-    // 🚪 Salir - Redirigir al Login
-    private async void OnSalirClicked(object? sender, EventArgs e)
-    {
-        bool confirmar = await DisplayAlert(
-            "Cerrar sesión",
-            "¿Estás seguro de que querés salir?",
-            "Sí, salir",
-            "Cancelar"
-        );
+        bool confirmar = await DisplayAlert("Cerrar sesión", "¿Estás seguro de que querés salir?", "Sí, salir", "Cancelar");
 
         if (confirmar)
         {
-            // Cerrar sesión
             SesionUsuario.CerrarSesion();
-
-            // Redirigir al Login
             if (Application.Current is App app)
             {
                 app.SetMainPage(new LoginPage());
@@ -329,74 +317,62 @@ public partial class MainPage : ContentPage
 
     private View CrearVistaMenu()
     {
-        var lblTitulo = new Label
-        {
-            Text = "📍 Menú",
-            FontSize = 22,
-            FontAttributes = FontAttributes.Bold,
-            HorizontalOptions = LayoutOptions.Center,
-            TextColor = Colors.Black
-        };
-
-        var btnAgregar = new Button
-        {
-            Text = "➕ Agregar incidencia",
-            BackgroundColor = Microsoft.Maui.Graphics.Color.FromArgb("#E53935"),
-            TextColor = Colors.White,
-            CornerRadius = 12,
-            FontAttributes = FontAttributes.Bold
-        };
-        btnAgregar.Clicked += OnAgregarIncidenciaClicked;
-
-        var btnBuscar = new Button
-        {
-            Text = "🔎 Buscar incidencia",
-            Margin = new Thickness(0, 10, 0, 0),
-            BackgroundColor = Microsoft.Maui.Graphics.Color.FromArgb("#F5F5F5"),
-            TextColor = Microsoft.Maui.Graphics.Color.FromArgb("#333333"),
-            CornerRadius = 12
-        };
-        btnBuscar.Clicked += OnBuscarIncidenciaClicked;
-
-        var btnPerfil = new Button
-        {
-            Text = "👤 Ir a mi perfil",
-            Margin = new Thickness(0, 10, 0, 0),
-            BackgroundColor = Microsoft.Maui.Graphics.Color.FromArgb("#F5F5F5"),
-            TextColor = Microsoft.Maui.Graphics.Color.FromArgb("#333333"),
-            CornerRadius = 12
-        };
-        btnPerfil.Clicked += OnIrPerfilClicked;
-
-        var btnSalir = new Button
-        {
-            Text = "🚪 Salir",
-            Margin = new Thickness(0, 10, 0, 0),
-            BackgroundColor = Microsoft.Maui.Graphics.Color.FromArgb("#F5F5F5"),
-            TextColor = Microsoft.Maui.Graphics.Color.FromArgb("#333333"),
-            CornerRadius = 12
-        };
-        btnSalir.Clicked += OnSalirClicked; // ← CAMBIADO
-
-        var separador = new BoxView
-        {
-            HeightRequest = 1,
-            Color = Colors.LightGray,
-            Margin = new Thickness(0, 10)
-        };
-
         return new VerticalStackLayout
         {
             Spacing = 10,
             Children =
-    {
-        lblTitulo,
-        btnAgregar,
-        btnBuscar,
-        btnPerfil,
-        separador,
-        btnSalir
-    }
+            {
+                new Label
+                {
+                    Text = "📍 Menú",
+                    FontSize = 22,
+                    FontAttributes = FontAttributes.Bold,
+                    HorizontalOptions = LayoutOptions.Center,
+                    TextColor = Colors.Black
+                },
+                new Button
+                {
+                    Text = "➕ Agregar incidencia",
+                    // 🔥 CORREGIDO: Usar Microsoft.Maui.Graphics.Color.FromArgb con formato hexadecimal
+                    BackgroundColor = Microsoft.Maui.Graphics.Color.FromArgb("#E53935"),
+                    TextColor = Colors.White,
+                    CornerRadius = 12,
+                    FontAttributes = FontAttributes.Bold
+                }.Invoke(btn => btn.Clicked += OnAgregarIncidenciaClicked),
+                new Button
+                {
+                    Text = "🔎 Buscar incidencia",
+                    Margin = new Thickness(0, 10, 0, 0),
+                    // 🔥 CORREGIDO: Usar Microsoft.Maui.Graphics.Color.FromArgb con formato hexadecimal
+                    BackgroundColor = Microsoft.Maui.Graphics.Color.FromArgb("#F5F5F5"),
+                    TextColor = Microsoft.Maui.Graphics.Color.FromArgb("#333333"),
+                    CornerRadius = 12
+                }.Invoke(btn => btn.Clicked += OnBuscarIncidenciaClicked),
+                new Button
+                {
+                    Text = "👤 Ir a mi perfil",
+                    Margin = new Thickness(0, 10, 0, 0),
+                    // 🔥 CORREGIDO: Usar Microsoft.Maui.Graphics.Color.FromArgb con formato hexadecimal
+                    BackgroundColor = Microsoft.Maui.Graphics.Color.FromArgb("#F5F5F5"),
+                    TextColor = Microsoft.Maui.Graphics.Color.FromArgb("#333333"),
+                    CornerRadius = 12
+                }.Invoke(btn => btn.Clicked += OnIrPerfilClicked),
+                new BoxView
+                {
+                    HeightRequest = 1,
+                    Color = Colors.LightGray,
+                    Margin = new Thickness(0, 10)
+                },
+                new Button
+                {
+                    Text = "🚪 Salir",
+                    Margin = new Thickness(0, 10, 0, 0),
+                    // 🔥 CORREGIDO: Usar Microsoft.Maui.Graphics.Color.FromArgb con formato hexadecimal
+                    BackgroundColor = Microsoft.Maui.Graphics.Color.FromArgb("#F5F5F5"),
+                    TextColor = Microsoft.Maui.Graphics.Color.FromArgb("#333333"),
+                    CornerRadius = 12
+                }.Invoke(btn => btn.Clicked += OnSalirClicked)
+            }
         };
     }
 
@@ -404,122 +380,68 @@ public partial class MainPage : ContentPage
     {
         get
         {
-            var lblTitulo = new Label
-            {
-                Text = "📋 Incidencias",
-                FontAttributes = FontAttributes.Bold,
-                FontSize = 18,
-                HorizontalOptions = LayoutOptions.Center,
-                TextColor = Colors.Black
-            };
-
-            var lista = new CollectionView
-            {
-                ItemsSource = incidencias,
-                ItemTemplate = new DataTemplate(() =>
-                {
-                    var frame = new Frame
-                    {
-                        BorderColor = Colors.LightGray,
-                        CornerRadius = 8,
-                        Padding = 5,
-                        Margin = 5,
-                        BackgroundColor = Colors.White
-                    };
-
-                    var title = new Label
-                    {
-                        FontAttributes = FontAttributes.Bold,
-                        TextColor = Colors.Black
-                    };
-                    title.SetBinding(Label.TextProperty, "Titulo");
-
-                    var coords = new Label
-                    {
-                        FontSize = 12,
-                        TextColor = Colors.Gray
-                    };
-                    coords.SetBinding(Label.TextProperty, "Coordenadas");
-
-                    var button = new Button
-                    {
-                        Text = "⋮",
-                        FontSize = 18,
-                        BackgroundColor = Colors.Transparent,
-                        TextColor = Colors.Black
-                    };
-                    button.SetBinding(Button.CommandParameterProperty, ".");
-                    button.Clicked += OnIncidenciaMenuClicked;
-
-                    var grid = new Grid
-                    {
-                        ColumnDefinitions =
-                    {
-                    new ColumnDefinition { Width = GridLength.Star },
-                    new ColumnDefinition { Width = GridLength.Auto }
-                    }
-                    };
-
-                    grid.Add(title, 0, 0);
-                    grid.Add(button, 1, 0);
-
-                    frame.Content = new VerticalStackLayout
-                    {
-                        Children = { grid, coords }
-                    };
-
-                    return frame;
-                })
-            };
-
-            // 🔴 Botón visible y contrastado
             var btnVolver = new Button
             {
                 Text = "⬅ Volver al menú",
+                // 🔥 CORREGIDO: Usar Microsoft.Maui.Graphics.Color.FromArgb con formato hexadecimal
                 BackgroundColor = Microsoft.Maui.Graphics.Color.FromArgb("#E53935"),
                 TextColor = Colors.White,
                 CornerRadius = 10,
                 FontAttributes = FontAttributes.Bold,
                 Margin = new Thickness(0, 10, 0, 0)
-            };
-            btnVolver.Clicked += (s, e) => MenuContainer.Content = CrearVistaMenu();
+            }.Invoke(btn => btn.Clicked += (s, e) => MenuContainer.Content = CrearVistaMenu());
 
             return new VerticalStackLayout
             {
                 Spacing = 10,
-                Children = { lblTitulo, lista, btnVolver }
-            };
-        }
-    }
-
-    private View CrearVistaBusqueda
-    {
-        get
-        {
-            var entry = new Entry { Placeholder = "Buscar por nombre..." };
-            var date = new DatePicker();
-
-            var btnBuscar = new Button { Text = "Buscar" };
-            btnBuscar.Clicked += (s, e) =>
-            {
-                var query = entry.Text;
-                var fecha = date.Date;
-                DisplayAlert("Buscar", $"Nombre: {query}, Fecha: {fecha:dd/MM/yyyy}", "OK");
-            };
-
-            var btnVolver = new Button { Text = "⬅ Volver al menú" };
-            btnVolver.Clicked += (s, e) => MenuContainer.Content = CrearVistaMenu();
-
-            return new VerticalStackLayout
-            {
                 Children =
-        {
-            new Label { Text = "🔎 Buscar Incidencia", FontAttributes = FontAttributes.Bold, FontSize = 18, HorizontalOptions = LayoutOptions.Center },
-            entry,
-            date,
-            btnBuscar,
-            btnVolver
-        }
+                {
+                    new Label
+                    {
+                        Text = "📋 Incidencias",
+                        FontAttributes = FontAttributes.Bold,
+                        FontSize = 18,
+                        HorizontalOptions = LayoutOptions.Center,
+                        TextColor = Colors.Black
+                    },
+                    new CollectionView
+                    {
+                        ItemsSource = incidencias,
+                        ItemTemplate = new DataTemplate(() =>
+                        {
+                            var title = new Label { FontAttributes = FontAttributes.Bold, TextColor = Colors.Black };
+                            title.SetBinding(Label.TextProperty, "Titulo");
+
+                            var coords = new Label { FontSize = 12, TextColor = Colors.Gray };
+                            coords.SetBinding(Label.TextProperty, "Coordenadas");
+
+                            var button = new Button { Text = "⋮", FontSize = 18, BackgroundColor = Colors.Transparent, TextColor = Colors.Black };
+                            button.SetBinding(Button.CommandParameterProperty, ".");
+
+                            var grid = new Grid
+                            {
+                                ColumnDefinitions =
+                                {
+                                    new ColumnDefinition { Width = GridLength.Star },
+                                    new ColumnDefinition { Width = GridLength.Auto }
+                                }
+                            };
+                            grid.Add(title, 0, 0);
+                            grid.Add(button, 1, 0);
+
+                            return new Frame
+                            {
+                                BorderColor = Colors.LightGray,
+                                CornerRadius = 8,
+                                Padding = 5,
+                                Margin = 5,
+                                BackgroundColor = Colors.White,
+                                Content = new VerticalStackLayout { Children = { grid, coords } }
+                            };
+                        })
+                    },
+                    btnVolver
+                }
             };
         }
     }
@@ -531,7 +453,6 @@ public partial class MainPage : ContentPage
     }
 }
 
-// Clase de extensión para el método Invoke (para hacer fluent API)
 public static class ControlExtensions
 {
     public static T Invoke<T>(this T control, Action<T> action) where T : VisualElement

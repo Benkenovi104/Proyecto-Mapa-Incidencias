@@ -250,7 +250,7 @@ public partial class PanelIncidenciasPage : ContentPage
 
         if (ResultadosView.IsVisible)
         {
-            OnBuscarClicked(null, EventArgs.Empty);
+            OnBuscarClicked(this, EventArgs.Empty);
         }
     }
 

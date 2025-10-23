@@ -9,8 +9,14 @@ using System.Globalization;
 using System.Text;
 using CsvHelper;
 using CsvHelper.Configuration;
+using Supabase;
+using Supabase.Storage;
+
 
 var builder = WebApplication.CreateBuilder(args);
+
+// 🔥 AGREGA ESTA LÍNEA PARA ACEPTAR CONEXIONES EXTERNAS (esta linea es para celular)
+//builder.WebHost.UseUrls("http://0.0.0.0:5102");
 
 // DbContext (elimina la configuración de NpgsqlDataSourceBuilder)
 builder.Services.AddDbContext<AppDb>(o =>
@@ -71,27 +77,6 @@ app.MapGet("/categories", async (AppDb db) =>
 
 
 /* ---------- INCIDENCIAS ---------- */
-app.MapPost("/incidents", async ([FromBody] CreateIncidentDto dto, AppDb db) =>
-{
-    var gf = NtsGeometryServices.Instance.CreateGeometryFactory(srid: 4326);
-    var point = gf.CreatePoint(new Coordinate(dto.Lon, dto.Lat));
-
-    var inc = new Incidencia
-    {
-        User_Id = dto.UserId,
-        Categoria_Id = dto.CategoriaId,
-        Descripcion = dto.Descripcion,
-        Ubicacion = point,
-        Foto_Url = dto.FotoUrl,
-        EstadoId = 1, // ← 1 = "nueva" (estado por defecto)
-        Timestamp = DateTimeOffset.UtcNow
-    };
-
-    db.Incidencias.Add(inc);
-    await db.SaveChangesAsync();
-
-    return Results.Created($"/incidents/{inc.Id}", new { inc.Id });
-});
 
 // Modificar el endpoint /incidents/near para excluir estado "cerrada" (ID 4)
 app.MapGet("/incidents/near", async (double lat, double lon, double radius, int? limit, AppDb db) =>
@@ -779,6 +764,131 @@ app.MapGet("/incidents/all", async (int? page, int? pageSize, AppDb db) =>
             HasPreviousPage = hasPreviousPage
         }
     });
+});
+
+
+// ======================
+// 📸 ENDPOINTS PARA FOTOS
+// ======================
+
+// Endpoint para subir foto a Supabase Storage
+app.MapPost("/incidents/upload-photo", async ([FromBody] UploadPhotoDto dto, AppDb db) =>
+{
+    try
+    {
+        // Validaciones básicas
+        if (string.IsNullOrWhiteSpace(dto.Base64Content))
+        {
+            return Results.BadRequest(new { Message = "El contenido de la foto es requerido", Success = false });
+        }
+
+        if (string.IsNullOrWhiteSpace(dto.FileName))
+        {
+            return Results.BadRequest(new { Message = "El nombre del archivo es requerido", Success = false });
+        }
+
+        // Configurar cliente de Supabase
+        var supabaseUrl = builder.Configuration["Supabase:Url"] ??
+                         Environment.GetEnvironmentVariable("SUPABASE_URL");
+        var supabaseKey = builder.Configuration["Supabase:Key"] ??
+                         Environment.GetEnvironmentVariable("SUPABASE_KEY");
+
+        if (string.IsNullOrEmpty(supabaseUrl) || string.IsNullOrEmpty(supabaseKey))
+        {
+            return Results.Problem("Configuración de Supabase no encontrada");
+        }
+
+        var options = new SupabaseOptions
+        {
+            AutoConnectRealtime = true
+        };
+
+        var client = new Supabase.Client(supabaseUrl, supabaseKey, options);
+        await client.InitializeAsync();
+
+        // Convertir base64 a bytes
+        var base64Data = dto.Base64Content;
+        if (base64Data.Contains(','))
+        {
+            base64Data = base64Data.Split(',')[1];
+        }
+
+        var imageBytes = Convert.FromBase64String(base64Data);
+
+        // Validar tamaño (máximo 3MB)
+        if (imageBytes.Length > 3 * 1024 * 1024)
+        {
+            return Results.BadRequest(new { Message = "La imagen es demasiado grande (máximo 3MB)", Success = false });
+        }
+
+        // Generar nombre único para el archivo
+        var fileExtension = Path.GetExtension(dto.FileName).ToLower();
+        if (string.IsNullOrEmpty(fileExtension))
+        {
+            fileExtension = ".jpg";
+        }
+
+        var uniqueFileName = $"{Guid.NewGuid()}{fileExtension}";
+        var storagePath = $"incidencias_photos/{uniqueFileName}";
+
+        // Subir a Supabase Storage
+        var storage = client.Storage;
+        var bucket = storage.From("incidencias_photos");
+
+        var result = await bucket.Upload(imageBytes, storagePath, new Supabase.Storage.FileOptions
+        {
+            ContentType = dto.ContentType ?? "image/jpeg"
+        });
+
+        if (result == null)
+        {
+            return Results.Problem("Error al subir la foto a Supabase Storage");
+        }
+
+        // Construir URL pública
+        var publicUrl = $"{supabaseUrl}/storage/v1/object/public/incidencias_photos/{storagePath}";
+
+        return Results.Ok(new UploadPhotoResponse
+        {
+            PhotoUrl = publicUrl,
+            Message = "Foto subida exitosamente",
+            Success = true
+        });
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"❌ Error al subir foto: {ex.Message}");
+        return Results.Problem($"Error interno del servidor: {ex.Message}");
+    }
+});
+
+// Modificar el endpoint POST /incidents para hacer la foto obligatoria
+app.MapPost("/incidents", async ([FromBody] CreateIncidentDto dto, AppDb db) =>
+{
+    // ✅ NUEVA VALIDACIÓN: Foto obligatoria
+    if (string.IsNullOrWhiteSpace(dto.FotoUrl))
+    {
+        return Results.BadRequest("La foto es obligatoria para crear una incidencia");
+    }
+
+    var gf = NtsGeometryServices.Instance.CreateGeometryFactory(srid: 4326);
+    var point = gf.CreatePoint(new Coordinate(dto.Lon, dto.Lat));
+
+    var inc = new Incidencia
+    {
+        User_Id = dto.UserId,
+        Categoria_Id = dto.CategoriaId,
+        Descripcion = dto.Descripcion,
+        Ubicacion = point,
+        Foto_Url = dto.FotoUrl, // ← Ahora es obligatorio
+        EstadoId = 1, // ← 1 = "nueva" (estado por defecto)
+        Timestamp = DateTimeOffset.UtcNow
+    };
+
+    db.Incidencias.Add(inc);
+    await db.SaveChangesAsync();
+
+    return Results.Created($"/incidents/{inc.Id}", new { inc.Id });
 });
 
 

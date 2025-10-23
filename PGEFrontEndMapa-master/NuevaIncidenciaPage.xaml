@@ -16,10 +16,37 @@
                     FontSize="16" />
 
             <Entry x:Name="entryDescripcion"
-                   Placeholder="Descripcion" />
+                   Placeholder="Descripción de la incidencia" />
 
-            <Entry x:Name="entryFoto"
-                   Placeholder="URL de la foto" />
+            <!-- 📸 SECCIÓN DE FOTO -->
+            <Frame BorderColor="LightGray" CornerRadius="10" Padding="10">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="📸 Foto de la Incidencia" 
+                           FontAttributes="Bold" 
+                           FontSize="16" />
+
+                    <!-- Botón para tomar foto -->
+                    <Button x:Name="btnTomarFoto"
+                            Text="📷 Tomar Foto"
+                            BackgroundColor="#2196F3"
+                            TextColor="White"
+                            CornerRadius="10"
+                            Clicked="OnTomarFotoClicked" />
+
+                    <!-- Preview de la foto -->
+                    <Image x:Name="imgPreview"
+                           HeightRequest="200"
+                           BackgroundColor="LightGray"
+                           Aspect="AspectFill" />
+
+                    <!-- Label para estado de la foto -->
+                    <Label x:Name="lblEstadoFoto"
+                           Text="No se ha tomado ninguna foto"
+                           FontSize="14"
+                           TextColor="Gray"
+                           HorizontalOptions="Center" />
+                </VerticalStackLayout>
+            </Frame>
 
             <Button Text="📤 Enviar incidencia"
                     BackgroundColor="#E53935"

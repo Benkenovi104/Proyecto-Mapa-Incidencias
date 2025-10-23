@@ -1,4 +1,4 @@
-﻿namespace IntegrarMapa.Models
+﻿namespace Api.Dtos
 {
     public class UploadPhotoDto
     {
@@ -12,15 +12,5 @@
         public string PhotoUrl { get; set; } = string.Empty;
         public string Message { get; set; } = string.Empty;
         public bool Success { get; set; }
-    }
-
-    public class CreateIncidentDto
-    {
-        public int UserId { get; set; }
-        public int CategoriaId { get; set; }
-        public string Descripcion { get; set; } = string.Empty;
-        public string FotoUrl { get; set; } = string.Empty; // ← AHORA OBLIGATORIO
-        public double Lat { get; set; }
-        public double Lon { get; set; }
     }
 }

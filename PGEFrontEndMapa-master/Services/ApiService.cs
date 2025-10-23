@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Maui.Controls;
+using IntegrarMapa.Helpers; 
 
 namespace IntegrarMapa.Services;
 
@@ -309,29 +310,43 @@ public class ApiService
     }
 
     // ======================
-    // 🆕 CREAR INCIDENCIA
+    // 🆕 CREAR INCIDENCIA (CON FOTO)
     // ======================
-    public async Task<bool> CrearIncidenciaAsync(int categoriaId, string descripcion, double lat, double lon)
+    public async Task<bool> CrearIncidenciaAsync(int categoriaId, string descripcion, double lat, double lon, string fotoUrl)
     {
         try
         {
+            // Usar SesionUsuario.UserId directamente
             var nuevaIncidencia = new
             {
+                UserId = SesionUsuario.UserId, // ← Usa tu SesionUsuario actual
                 CategoriaId = categoriaId,
                 Descripcion = descripcion,
                 Lat = lat,
-                Lon = lon
+                Lon = lon,
+                FotoUrl = fotoUrl // ← AHORA ES OBLIGATORIO
             };
 
             var json = JsonSerializer.Serialize(nuevaIncidencia);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
             var response = await _http.PostAsync("/incidents", content);
-            return response.IsSuccessStatusCode;
+
+            if (response.IsSuccessStatusCode)
+            {
+                Console.WriteLine("✅ Incidencia creada exitosamente");
+                return true;
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"❌ Error al crear incidencia: {errorContent}");
+                return false;
+            }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error al crear incidencia: {ex.Message}");
+            Console.WriteLine($"❌ Excepción al crear incidencia: {ex.Message}");
             return false;
         }
     }
@@ -481,7 +496,40 @@ public class ApiService
             return new List<CategoriaDto>();
         }
     }
+    // ======================
+    // 📸 SUBIR FOTO
+    // ======================
+    public async Task<UploadPhotoResponse?> SubirFotoAsync(byte[] imageBytes, string fileName, string contentType)
+    {
+        try
+        {
+            var base64Content = Convert.ToBase64String(imageBytes);
 
-    
+            var dto = new UploadPhotoDto
+            {
+                FileName = fileName,
+                ContentType = contentType,
+                Base64Content = base64Content
+            };
+
+            var response = await _http.PostAsJsonAsync("/incidents/upload-photo", dto);
+
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<UploadPhotoResponse>();
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"❌ Error al subir foto: {errorContent}");
+                return null;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"❌ Excepción al subir foto: {ex.Message}");
+            return null;
+        }
+    }
 
 }
