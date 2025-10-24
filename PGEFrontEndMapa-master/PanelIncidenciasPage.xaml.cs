@@ -47,9 +47,6 @@ public partial class PanelIncidenciasPage : ContentPage
             };
             FiltroEstado.ItemsSource = opcionesEstados;
             FiltroEstado.SelectedIndex = 0;
-
-            // Fechas ya está configurado en XAML
-            FiltroFecha.SelectedIndex = 0;
         }
         catch (Exception ex)
         {
@@ -156,8 +153,145 @@ public partial class PanelIncidenciasPage : ContentPage
         BtnCargarMas.Text = $"Cargar {_pageSize} incidencias más";
     }
 
-    // Los demás métodos (OnEditarClicked, OnEliminarClicked, OnBuscarClicked, etc.)
-    // se mantienen igual que en la versión anterior...
+    private async void OnBuscarClicked(object sender, EventArgs e)
+    {
+        try
+        {
+            loadingIndicator.IsVisible = true;
+            loadingIndicator.IsRunning = true;
+
+            // ======== Obtener valores de los filtros ========
+
+            int? categoriaId = null;
+            if (FiltroCategoria.SelectedIndex > 0)
+            {
+                var categoriaSeleccionada = _categorias[FiltroCategoria.SelectedIndex - 1];
+                categoriaId = categoriaSeleccionada.Id;
+            }
+
+            string? estado = null;
+            if (FiltroEstado.SelectedIndex > 0)
+            {
+                estado = FiltroEstado.SelectedItem?.ToString();
+            }
+
+            string? descripcion = string.IsNullOrWhiteSpace(FiltroDescripcion.Text)
+                ? null
+                : FiltroDescripcion.Text.Trim();
+
+            string? usuario = string.IsNullOrWhiteSpace(FiltroUsuario.Text)
+                ? null
+                : FiltroUsuario.Text.Trim();
+
+            DateTimeOffset? desde = null;
+            DateTimeOffset? hasta = null;
+
+            if (FiltroFechaDesde?.Date != null && FiltroFechaDesde.Date != DateTime.MinValue)
+                desde = FiltroFechaDesde.Date;
+
+            if (FiltroFechaHasta?.Date != null && FiltroFechaHasta.Date != DateTime.MinValue)
+                hasta = FiltroFechaHasta.Date;
+
+            // ======== Llamar al ApiService con filtros ========
+            // CORREGIDO: Usar solo los 4 parámetros que acepta tu ApiService
+            List<IncidenciaDto> incidenciasFiltradas;
+
+            try
+            {
+                // Solo pasar los parámetros que tu ApiService acepta
+                incidenciasFiltradas = await _apiService.BuscarIncidenciasAsync(
+                    categoriaId: categoriaId,
+                    descripcion: descripcion,
+                    desde: desde,
+                    hasta: hasta
+                );
+
+                // Si necesitas filtrar por estado o usuario, hacerlo localmente
+                if (!string.IsNullOrEmpty(estado) || !string.IsNullOrEmpty(usuario))
+                {
+                    incidenciasFiltradas = incidenciasFiltradas.Where(i =>
+                        (string.IsNullOrEmpty(estado) || i.Estado?.Equals(estado, StringComparison.OrdinalIgnoreCase) == true) &&
+                        (string.IsNullOrEmpty(usuario) || i.UsuarioNombre?.Contains(usuario, StringComparison.OrdinalIgnoreCase) == true)
+                    ).ToList();
+                }
+            }
+            catch (Exception apiEx)
+            {
+                Console.WriteLine($"❌ Error en búsqueda API: {apiEx.Message}");
+                // Si falla la API, usar filtrado local completo
+                incidenciasFiltradas = await FiltrarIncidenciasLocalmenteAsync(
+                    categoriaId, descripcion, desde, hasta, estado, usuario);
+            }
+
+            // ======== Mostrar resultados ========
+            if (incidenciasFiltradas != null && incidenciasFiltradas.Any())
+            {
+                ResultadosView.IsVisible = true;
+                ResultadosCollection.ItemsSource = incidenciasFiltradas;
+                LblResultado.Text = $"{incidenciasFiltradas.Count} resultados encontrados";
+                LblResultado.IsVisible = true;
+            }
+            else
+            {
+                ResultadosView.IsVisible = false;
+                LblResultado.Text = "No se encontraron incidencias con esos filtros";
+                LblResultado.IsVisible = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            await DisplayAlert("Error", $"Ocurrió un error al buscar incidencias: {ex.Message}", "OK");
+        }
+        finally
+        {
+            loadingIndicator.IsVisible = false;
+            loadingIndicator.IsRunning = false;
+        }
+    }
+
+
+    // Método alternativo si tu ApiService no tiene búsqueda
+    private async Task<List<IncidenciaDto>> FiltrarIncidenciasLocalmenteAsync(
+        int? categoriaId, string? descripcion, DateTimeOffset? desde,
+        DateTimeOffset? hasta, string? estado, string? usuario)
+    {
+        // Cargar todas las incidencias primero
+        var todasIncidencias = new List<IncidenciaDto>();
+        int pagina = 1;
+
+        while (true)
+        {
+            var (incidencias, pagination) = await _apiService.ObtenerIncidenciasAsync(pagina, 50);
+            if (!incidencias.Any()) break;
+
+            todasIncidencias.AddRange(incidencias);
+            if (!pagination.HasNextPage) break;
+            pagina++;
+        }
+
+        // Aplicar filtros localmente
+        var query = todasIncidencias.AsEnumerable();
+
+        if (categoriaId.HasValue)
+            query = query.Where(i => i.CategoriaId == categoriaId.Value);
+
+        if (!string.IsNullOrEmpty(descripcion))
+            query = query.Where(i => i.Descripcion?.Contains(descripcion, StringComparison.OrdinalIgnoreCase) == true);
+
+        if (!string.IsNullOrEmpty(estado))
+            query = query.Where(i => i.Estado?.Equals(estado, StringComparison.OrdinalIgnoreCase) == true);
+
+        if (!string.IsNullOrEmpty(usuario))
+            query = query.Where(i => i.UsuarioNombre?.Contains(usuario, StringComparison.OrdinalIgnoreCase) == true);
+
+        if (desde.HasValue)
+            query = query.Where(i => i.Fecha >= desde.Value);
+
+        if (hasta.HasValue)
+            query = query.Where(i => i.Fecha <= hasta.Value);
+
+        return query.ToList();
+    }
 
     private async void OnEditarClicked(object sender, EventArgs e)
     {
@@ -254,18 +388,19 @@ public partial class PanelIncidenciasPage : ContentPage
         }
     }
 
-    private void OnBuscarClicked(object sender, EventArgs e)
-    {
-        // Para búsquedas, volvemos a cargar desde la primera página
-        _ = CargarIncidenciasPrimeraPagina();
-    }
-
     private void OnLimpiarFiltrosClicked(object sender, EventArgs e)
     {
         FiltroCategoria.SelectedIndex = 0;
         FiltroEstado.SelectedIndex = 0;
         FiltroUsuario.Text = string.Empty;
-        FiltroFecha.SelectedIndex = 0;
+        FiltroDescripcion.Text = string.Empty;
+
+        // Limpiar fechas
+        if (FiltroFechaDesde != null)
+            FiltroFechaDesde.Date = DateTime.Now;
+        if (FiltroFechaHasta != null)
+            FiltroFechaHasta.Date = DateTime.Now;
+
         ResultadosView.IsVisible = false;
 
         // Recargar primera página al limpiar filtros

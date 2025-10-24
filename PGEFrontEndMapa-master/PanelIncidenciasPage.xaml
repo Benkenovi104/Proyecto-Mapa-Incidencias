@@ -67,8 +67,19 @@
                     <Grid ColumnDefinitions="*, *"
                           ColumnSpacing="15">
 
-                        <!-- Filtro Usuario -->
+                        <!-- Filtro Descripción -->
                         <VerticalStackLayout Spacing="5" Grid.Column="0">
+                            <Label Text="Por descripción:" FontAttributes="Bold" TextColor="#555" />
+                            <Entry x:Name="FiltroDescripcion"
+                                   Placeholder="Buscar en descripción..."
+                                   PlaceholderColor="#999"
+                                   BackgroundColor="#f0f2f5"
+                                   TextColor="#222"
+                                   HeightRequest="45" />
+                        </VerticalStackLayout>
+
+                        <!-- Filtro Usuario -->
+                        <VerticalStackLayout Spacing="5" Grid.Column="1">
                             <Label Text="Por usuario:" FontAttributes="Bold" TextColor="#555" />
                             <Entry x:Name="FiltroUsuario"
                                    Placeholder="Nombre de usuario..."
@@ -77,24 +88,28 @@
                                    TextColor="#222"
                                    HeightRequest="45" />
                         </VerticalStackLayout>
+                    </Grid>
 
-                        <!-- Filtro Fecha -->
+                    <!-- TERCERA FILA DE FILTROS - FECHAS -->
+                    <Grid ColumnDefinitions="*, *"
+                          ColumnSpacing="15">
+
+                        <!-- Filtro Fecha Desde -->
+                        <VerticalStackLayout Spacing="5" Grid.Column="0">
+                            <Label Text="Fecha desde:" FontAttributes="Bold" TextColor="#555" />
+                            <DatePicker x:Name="FiltroFechaDesde"
+                                        BackgroundColor="#f0f2f5"
+                                        TextColor="#222"
+                                        HeightRequest="45" />
+                        </VerticalStackLayout>
+
+                        <!-- Filtro Fecha Hasta -->
                         <VerticalStackLayout Spacing="5" Grid.Column="1">
-                            <Label Text="Por fecha:" FontAttributes="Bold" TextColor="#555" />
-                            <Picker x:Name="FiltroFecha"
-                                    Title="Rango de fechas..."
-                                    BackgroundColor="#f0f2f5"
-                                    TextColor="#222"
-                                    HeightRequest="70">
-                                <Picker.ItemsSource>
-                                    <x:Array Type="{x:Type x:String}">
-                                        <x:String>Todas las fechas</x:String>
-                                        <x:String>Últimas 24 horas</x:String>
-                                        <x:String>Última semana</x:String>
-                                        <x:String>Último mes</x:String>
-                                    </x:Array>
-                                </Picker.ItemsSource>
-                            </Picker>
+                            <Label Text="Fecha hasta:" FontAttributes="Bold" TextColor="#555" />
+                            <DatePicker x:Name="FiltroFechaHasta"
+                                        BackgroundColor="#f0f2f5"
+                                        TextColor="#222"
+                                        HeightRequest="45" />
                         </VerticalStackLayout>
                     </Grid>
 
